@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ffffff;
+
+    /* 
+      Background is controlled by 3D component, 
+      but we keep a fallback here 
+    */
+    --card-foreground: #ffffff;
+    --popover: #0a0a0a;
+    --popover-foreground: #ffffff;
+    --primary: #ffffff;
+    --primary-foreground: #000000;
+    --secondary: #1a1a1a;
+    --secondary-foreground: #ffffff;
+    --muted: #1a1a1a;
+    --muted-foreground: #a3a3a3;
+    --accent: #1a1a1a;
+    --accent-foreground: #ffffff;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #ffffff;
+    --border: #1a1a1a;
+    --input: #1a1a1a;
+    --ring: #d4d4d4;
+  }
+}
+
+@theme {
+  --font-sans: var(--font-inter);
+  --font-space: var(--font-space);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    /* Standard CSS is often better than @apply for body in v4, but @apply works too */
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Custom Scrollbar for "Vibe" feel */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.4);
+  }
+}
+
+.glass-panel {
+  background-color: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
