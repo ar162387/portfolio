@@ -22,10 +22,18 @@ export function Skills() {
                         <div className="flex flex-wrap gap-2">
                             {skills.map((skill) => (
                                 <span
-                                    key={skill}
-                                    className="px-3 py-1.5 text-sm rounded-md bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                                    key={skill.name}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-md bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
                                 >
-                                    {skill}
+                                    {skill.icon && (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                            src={`https://skillicons.dev/icons?i=${skill.icon}`}
+                                            alt={`${skill.name} icon`}
+                                            className="w-5 h-5"
+                                        />
+                                    )}
+                                    {skill.name}
                                 </span>
                             ))}
                         </div>

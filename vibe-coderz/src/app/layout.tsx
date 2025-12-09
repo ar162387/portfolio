@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-// import { Background3D } from "@/components/3d/Background3D"; // Client component needed
+import { CursorEffect } from "@/components/ui/CursorEffect";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const spaceGrotesk = Space_Grotesk({
@@ -27,7 +27,8 @@ export default function RootLayout({
 
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-transparent text-foreground`}>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-transparent text-foreground cursor-none`}>
+        <CursorEffect />
         {/* 
             Background 3D Canvas
             It is fixed and sits behind everything.

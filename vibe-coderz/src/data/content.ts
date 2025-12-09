@@ -32,11 +32,41 @@ export const content = {
         { label: "Core Technologies", value: "15+", sub: "Expert Proficiency" },
     ],
     skills: {
-        languages: ["Python", "JavaScript/TypeScript", "C/C++", "Java", "Kotlin", "PHP"],
-        frameworks: ["Next.js", "React", "Node.js", "Django", "Laravel", "Flutter"],
-        databases: ["PostgreSQL", "MongoDB", "MySQL", "MS SQL Server"],
-        tools: ["Docker", "Git", "Cursor", "CI/CD", "Postman"],
-        other: ["Vibe Coding", "AI SDKs (Claude/OpenAI)", "System Design", "Prompt Engineering"],
+        languages: [
+            { name: "Python", icon: "python" },
+            { name: "JavaScript/TypeScript", icon: "ts,js" },
+            { name: "C/C++", icon: "cpp,c" },
+            { name: "Java", icon: "java" },
+            { name: "Kotlin", icon: "kotlin" },
+            { name: "PHP", icon: "php" }
+        ],
+        frameworks: [
+            { name: "Next.js", icon: "nextjs" },
+            { name: "React", icon: "react" },
+            { name: "Node.js", icon: "nodejs" },
+            { name: "Django", icon: "django" },
+            { name: "Laravel", icon: "laravel" },
+            { name: "Flutter", icon: "flutter" }
+        ],
+        databases: [
+            { name: "PostgreSQL", icon: "postgres" },
+            { name: "MongoDB", icon: "mongodb" },
+            { name: "MySQL", icon: "mysql" },
+            { name: "MS SQL Server", icon: "azure" }
+        ],
+        tools: [
+            { name: "Docker", icon: "docker" },
+            { name: "Git", icon: "git" },
+            { name: "Cursor", icon: "" },
+            { name: "CI/CD", icon: "githubactions" },
+            { name: "Postman", icon: "postman" }
+        ],
+        other: [
+            { name: "Vibe Coding", icon: "" },
+            { name: "AI SDKs (Claude/OpenAI)", icon: "" },
+            { name: "System Design", icon: "" },
+            { name: "Prompt Engineering", icon: "" }
+        ],
     },
     services: [
         {
