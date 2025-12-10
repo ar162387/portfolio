@@ -17,9 +17,9 @@ export function Services() {
     return (
         <SectionWrapper id="services">
             <div className="text-center mb-16">
-                <h2 className="text-3xl md:text-5xl font-bold font-space mb-6">Our Services</h2>
+                <h2 className="text-3xl md:text-5xl font-bold font-space mb-6">Services</h2>
                 <p className="text-white/60 max-w-2xl mx-auto">
-                    We provide comprehensive digital solutions tailored to your needs.
+                    I provide comprehensive digital solutions tailored to your needs.
                 </p>
             </div>
 

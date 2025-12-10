@@ -37,8 +37,13 @@ export function Header() {
         >
             <div className="container mx-auto px-4 flex items-center justify-between">
                 {/* Logo */}
-                <Link href="/" className="text-2xl font-bold font-space tracking-tight">
-                    VIbe <span className="text-white/60">COderz</span>
+                <Link href="/" className="flex items-center gap-3 text-2xl font-bold font-space tracking-tight group">
+                    <img
+                        src="/logo.png"
+                        alt="Logo"
+                        className="w-10 h-10 object-contain group-hover:rotate-180 transition-transform duration-700"
+                    />
+                    <span>VIbe <span className="text-white/60">COderz</span></span>
                 </Link>
 
                 {/* Desktop Nav */}

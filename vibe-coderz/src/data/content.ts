@@ -7,7 +7,7 @@ export const content = {
     hero: {
         title: "Building Intelligent Digital Ecosystems",
         subtitle: "AI Agents | RAG Systems | Enterprise Solutions",
-        description: "Transforming businesses through advanced technological integration. From robust E-Commerce foundations to sophisticated AI Agents and RAG systems, I engineer scalable solutions that drive measurable growth and operational efficiency.",
+        description: "I am Syed Shah Abdur Rehman, the engineer behind Vibe Coderz. I transform businesses through advanced technological integration. From robust E-Commerce foundations to sophisticated AI Agents and RAG systems, I engineer scalable solutions that drive measurable growth and operational efficiency.",
         ctaPrimary: "Explore Solutions",
         ctaSecondary: "Consult Now",
     },
@@ -179,8 +179,8 @@ export const content = {
         email: "ar162387@gmail.com",
         mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3399.0494498305604!2d74.3587!3d31.5204!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3919000000000000%3A0x0!2zMzHCsDMxJzEzLjQiTiA3NMKwMjEnMzEuMyJF!5e0!3m2!1sen!2s!4v1633023222542!5m2!1sen!2s",
         social: {
-            github: "https://github.com/",
-            linkedin: "https://linkedin.com/"
+            github: "https://github.com/ar162387",
+            linkedin: "https://www.linkedin.com/in/syed-shah-abdur-rehman-2b1323216"
         }
     }
 };

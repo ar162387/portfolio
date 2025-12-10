@@ -13,6 +13,13 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "VIbe COderz | Experience the Vibe of Code",
   description: "Portfolio of Shah Abdur Rehman - Full Stack Developer",
+  icons: {
+    icon: [
+      { url: "/logo.png" },
+      { url: "/favicon.ico" },
+    ],
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
