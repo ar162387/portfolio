@@ -102,34 +102,111 @@ export const content = {
     ],
     portfolio: [
         {
+            id: "blackstone-crm",
             title: "BlackStone CRM",
             category: "CRM & Sales System",
+            brief: "A comprehensive CRM solution for managing sales pipelines and client data.",
+            description: "Built a robust Customer Relationship Management system tailored for high-volume sales teams. The system centralizes client data, tracks interaction history, and automates follow-ups. Key features include a dynamic dashboard for real-time sales metrics, role-based access control, and integration with third-party email services.",
+            role: "Full Stack Developer",
             tech: "React, Node.js, MongoDB, Claude API",
-            image: "/assets/img/portfolio/crm-dashboard.png"
+            image: "/assets/img/blackstone/image0.png",
+            screenshots: [
+                "/assets/img/blackstone/image0.png",
+                "/assets/img/blackstone/image1.png",
+                "/assets/img/blackstone/image2.png",
+                "/assets/img/blackstone/image3.png",
+                "/assets/img/blackstone/image4.png",
+                "/assets/img/blackstone/image5.png"
+            ],
+            tags: ["Web", "Enterprise", "AI"],
+            links: {
+                github: "https://github.com/ar162387/BlackStone",
+            }
         },
         {
-            title: "Airide Logistics",
-            category: "Android Marketplace",
-            tech: "Kotlin, Firebase, Google Maps API",
-            image: "/assets/img/portfolio/mobile-logistics.png"
-        },
-        {
+            id: "yapp-multimedia",
             title: "Yapp Multimedia",
             category: "Social Platform",
-            tech: "Flutter, Firebase, Real-time Chat",
-            image: "/assets/img/portfolio/social-app.png"
+            brief: "Real-time social networking app with chat and media sharing.",
+            description: "The Yapp application allows users to create unique media experiences by combining audio, images, and video. Engineered a cross-platform social application using Flutter. Features include real-time messaging, media sharing, and user status updates. Implemented a scalable backend with Firebase Firestore to handle high concurrency and instant data syncing.",
+            role: "Lead Developer",
+            tech: "Flutter, Firebase, FFmpegKit, Provider",
+            image: "/assets/img/yapp/image0.png",
+            screenshots: [
+                "/assets/img/yapp/image0.png",
+                "/assets/img/yapp/image1.png",
+                "/assets/img/yapp/image2.png",
+                "/assets/img/yapp/image3.png"
+            ],
+            tags: ["Mobile", "Cross-Platform", "Social"],
+            links: {
+                github: "https://github.com/ar162387/yapp",
+            }
         },
         {
-            title: "MRA Import & Export",
-            category: "E-Commerce",
-            tech: "MERN Stack, Stripe, Inventory Management",
-            image: "/assets/img/portfolio/ecommerce-platform.png"
+            id: "bms-system",
+            title: "Building Management System",
+            category: "Management System",
+            brief: "A comprehensive system for real estate managers and residents.",
+            description: "A Building Management System (BMS) designed to help real estate owners, building managers, committees/boards, and residents run a building smoothly. It brings day‑to‑day tasks into one place: bookings, inspections, announcements, documents, and instant alerts.",
+            role: "Full Stack Developer",
+            tech: "React, Node.js, Cloudinary, Email Services",
+            image: "/assets/img/bms/image0.png",
+            screenshots: [
+                "/assets/img/bms/image0.png",
+                "/assets/img/bms/image1.png",
+                "/assets/img/bms/image2.png",
+                "/assets/img/bms/image3.png",
+                "/assets/img/bms/image4.png",
+                "/assets/img/bms/image5.png",
+                "/assets/img/bms/image6.png"
+            ],
+            tags: ["Web", "Real Estate", "Management"],
+            links: {
+                github: "https://github.com/ar162387/bms",
+            }
         },
         {
-            title: "Connect Four AI",
-            category: "AI Game Logic",
-            tech: "Python, Minimax Algorithm, Alpha-Beta Pruning",
-            image: "/assets/img/portfolio/ai-game.png"
+            id: "tgif-food",
+            title: "TGIF Dabba",
+            category: "Food Delivery",
+            brief: "Full-featured food delivery platform with CMS and Stripe integration.",
+            description: "A complete food delivery solution featuring a customer-facing app, a CMS for restaurant management, and secure payment processing via Stripe. Engineered with a scalable backend and intuitive frontend for seamless ordering.",
+            role: "Full Stack Developer",
+            tech: "MERN Stack, Stripe, Redux, CMS",
+            image: "/assets/img/tgifdabba/image0.png",
+            screenshots: [
+                "/assets/img/tgifdabba/image0.png",
+                "/assets/img/tgifdabba/image1.png",
+                "/assets/img/tgifdabba/image2.png",
+                "/assets/img/tgifdabba/image3.png"
+            ],
+            tags: ["Web", "E-Commerce", "Food Delivery"],
+            links: {
+                github: "https://github.com/ar162387/tgifdabba",
+            }
+        },
+        {
+            id: "around-you",
+            title: "AroundYou",
+            category: "Location Services",
+            brief: "Discover events and services around you.",
+            description: "A location-based application connecting users with nearby services, events, and community activities. Features interactive maps, real-time location tracking, and personalized recommendations.",
+            role: "Mobile Developer",
+            tech: "React Native, Google Maps API, Firebase",
+            image: "/assets/img/aroundyou/image0.png",
+            screenshots: [
+                "/assets/img/aroundyou/image0.png",
+                "/assets/img/aroundyou/image1.png",
+                "/assets/img/aroundyou/image2.png",
+                "/assets/img/aroundyou/image3.png",
+                "/assets/img/aroundyou/image4.png",
+                "/assets/img/aroundyou/image5.png"
+            ],
+            tags: ["Mobile", "Location", "Social"],
+            links: {
+                github: "https://github.com/ar162387/aroundyou",
+            }
         }
     ],
     resume: {

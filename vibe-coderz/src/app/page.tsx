@@ -9,12 +9,14 @@ import { Portfolio } from "@/components/sections/Portfolio";
 import { Resume } from "@/components/sections/Resume";
 import { Contact } from "@/components/sections/Contact";
 import { Background3D } from "@/components/3d/Background3D";
+import { Foreground3D } from "@/components/3d/Foreground3D";
 import { motion } from "framer-motion";
 
 export default function Home() {
   return (
     <main className="min-h-screen text-white selection:bg-white selection:text-black relative">
       <Background3D />
+      <Foreground3D />
 
       <div className="relative z-10">
         <Header />
