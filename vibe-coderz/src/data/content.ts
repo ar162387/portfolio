@@ -169,11 +169,11 @@ export const content = {
         {
             id: "tgif-food",
             title: "TGIF Dabba",
-            category: "Food Delivery",
-            brief: "Full-featured food delivery platform with CMS and Stripe integration.",
-            description: "A complete food delivery solution featuring a customer-facing app, a CMS for restaurant management, and secure payment processing via Stripe. Engineered with a scalable backend and intuitive frontend for seamless ordering.",
+            category: "Restaurant CMS & Delivery",
+            brief: "Comprehensive CMS and delivery platform with Stripe payments.",
+            description: "A robust full-stack solution featuring a restaurant CMS and customer-facing delivery platform. Built with React, Node.js, and MongoDB, it facilitates secure payments via Stripe, daily menu scheduling, and real-time order tracking. The system integrates complex inventory management with role-based authentication (JWT), ensuring seamless operations and financial security.",
             role: "Full Stack Developer",
-            tech: "MERN Stack, Stripe, Redux, CMS",
+            tech: "React, Node.js, MongoDB, Express, Stripe, Tailwind CSS",
             image: "/assets/img/tgifdabba/image0.png",
             screenshots: [
                 "/assets/img/tgifdabba/image0.png",
@@ -181,19 +181,20 @@ export const content = {
                 "/assets/img/tgifdabba/image2.png",
                 "/assets/img/tgifdabba/image3.png"
             ],
-            tags: ["Web", "E-Commerce", "Food Delivery"],
+            tags: ["Web", "CMS", "Stripe", "Full Stack"],
             links: {
-                github: "https://github.com/ar162387/tgifdabba",
+                github: "https://github.com/ar162387/tgifdabba.git",
+                live: "http://tgifdabba.co.uk"
             }
         },
         {
             id: "around-you",
             title: "AroundYou",
-            category: "Location Services",
-            brief: "Discover events and services around you.",
-            description: "A location-based application connecting users with nearby services, events, and community activities. Features interactive maps, real-time location tracking, and personalized recommendations.",
-            role: "Mobile Developer",
-            tech: "React Native, Google Maps API, Firebase",
+            category: "Location-Based Ecosystem",
+            brief: "Feature-rich platform for real-time local commerce and delivery.",
+            description: "A sophisticated location-aware mobile application serving both consumers and merchants. Built with a scalable React Native architecture, it features real-time order tracking via Supabase, geospatial delivery zone validation using PostGIS, and a robust state management system with Zustand and React Query. The platform supports multi-shop carts, live runner tracking, and comprehensive merchant dashboards.",
+            role: "Mobile Architect & Lead Developer",
+            tech: "React Native, Supabase, PostGIS, TypeScript, NativeWind",
             image: "/assets/img/aroundyou/image0.png",
             screenshots: [
                 "/assets/img/aroundyou/image0.png",
@@ -203,9 +204,9 @@ export const content = {
                 "/assets/img/aroundyou/image4.png",
                 "/assets/img/aroundyou/image5.png"
             ],
-            tags: ["Mobile", "Location", "Social"],
+            tags: ["Mobile", "Geospatial", "Real-Time"],
             links: {
-                github: "https://github.com/ar162387/aroundyou",
+                github: "https://github.com/ar162387/AroundYouFYP.git",
             }
         }
     ],

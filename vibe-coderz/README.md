@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vibe Coderz Portfolio
 
-## Getting Started
+A high-performance, immersive 3D portfolio website built for **Syed Shah Abdur Rehman**. This project showcases advanced web engineering capabilities, featuring a galactic 3D background, smooth scroll animations, and a responsive, data-driven architecture.
 
-First, run the development server:
+## 🚀 Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### Core Framework
+- **Next.js 15 (App Router)**: Utilizing server components for initial load performance and client components for interactive 3D elements.
+- **TypeScript**: Ensuring type safety and code robustness across the application.
+
+### Styling & Animation
+- **Tailwind CSS**: Utility-first styling for rapid UI development and consistent design tokens.
+- **Framer Motion**: Powering complex scroll-linked animations, page transitions, and UI micro-interactions.
+- **Lucide React**: Modern, consistent icon set.
+
+### 3D Graphics
+- **Three.js**: The core 3D graphics library.
+- **React Three Fiber (R3F)**: A React renderer for Three.js, enabling declarative 3D scene construction.
+- **React Three Drei**: Useful helpers for R3F (Stars, Sparkles, Float).
+- **Custom Shaders/Logic**:
+    - **Galactic Background**: A dynamic starfield with scroll-driven color transitions tracking the user's journey through sections.
+    - **Procedural Events**: A custom "Cosmic Event" system that probabilistically spawns shooting stars, meteoroids, and black holes based on frame deltas.
+
+## 🏗 Architecture
+
+### Directory Structure
+```
+src/
+├── app/                # Next.js App Router pages
+├── components/
+│   ├── 3d/            # Three.js experiences (Background3D, Foreground3D)
+│   ├── layout/        # Semantic layout components (Header, Footer)
+│   ├── portfolio/     # Project showcase components (Modal, Cards)
+│   └── sections/      # Page sections (Hero, Skills, Contact)
+├── data/              # Centralized content store (content.ts)
+└── lib/               # Utility functions (cn, etc.)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Key Architectural Decisions
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1.  **Separation of Concerns (3D Layers)**:
+    -   `Background3D.tsx`: Handles the deep background (stars, nebulae, core artifact). It sits at `z-index: -1`.
+    -   `Foreground3D.tsx`: Handles foreground overlays like the "Void Black Hole". It sits at `z-index: 100` but uses `pointer-events: none` to ensure it doesn't block UI interactions while visually occluding text.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2.  **Data-Driven Content**:
+    -   All text content, project details, skills, and resume data are decoupled from UI components and stored in `src/data/content.ts`. This allows for easy updates without touching React code.
 
-## Learn More
+3.  **Performance Optimization**:
+    -   **Canvas Separation**: Heavy 3D calculations are isolated in their own R3F Canvases.
+    -   **Event Throttling**: The cosmic event system uses delta-time tracking and randomization with cooldowns to prevent update-loop interferences.
+    -   **Lazy Loading**: Next.js automatically optimizes images and code-splits routes.
 
-To learn more about Next.js, take a look at the following resources:
+## 🌟 Features
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+-   **Interactive Galactic Scroll**: Background colors shift seamlessly from Deep Space Black to Cosmic Purple and Deep Indigo as the user scrolls.
+-   **Rare Cosmic Events**: A probabilistic system interacting with the user's session time (Shooting stars, Black holes).
+-   **Unified Project Modal**: A rich media modal for showcasing projects with image galleries and full-screen previews.
+-   **Responsive Design**: Fully responsive layout adapting to mobile and desktop viewports.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📦 Installation
 
-## Deploy on Vercel
+```bash
+npm install
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📄 License
+All rights reserved. Syed Shah Abdur Rehman.

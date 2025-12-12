@@ -12,13 +12,15 @@ export function Resume() {
                     <h2 className="text-3xl md:text-5xl font-bold font-space mb-4">Experience & Education</h2>
                     <p className="text-white/60">My professional journey.</p>
                 </div>
+            </div>
+            <div className="flex justify-center mb-12">
                 <a
-                    href="/resume"
-                    target="_blank"
-                    className="px-6 py-3 bg-white text-black rounded-full font-bold flex items-center gap-2 hover:bg-white/90 transition-colors"
+                    href="/resume.pdf"
+                    download
+                    className="flex items-center gap-2 px-8 py-3 bg-white text-black rounded-full hover:bg-white/90 transition-all font-medium text-lg hover:scale-105"
                 >
+                    <span>Download Resume (PDF)</span>
                     <Download size={20} />
-                    Download Resume (PDF)
                 </a>
             </div>
 
