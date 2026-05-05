@@ -7,7 +7,7 @@ export const content = {
     hero: {
         title: "Building Intelligent Digital Ecosystems",
         subtitle: "AI Agents | RAG Systems | Enterprise Solutions",
-        description: "I am Syed Shah Abdur Rehman, the engineer behind Vibe Coderzz. I transform businesses through advanced technological integration. From robust E-Commerce foundations to sophisticated AI Agents and RAG systems, I engineer scalable solutions that drive measurable growth and operational efficiency.",
+        description: "We are VibeCoderzz, engineering advanced digital solutions for modern businesses. From robust E-Commerce foundations to sophisticated AI Agents and RAG systems, we build scalable platforms that drive measurable growth and operational efficiency.",
         ctaPrimary: "Explore Solutions",
         ctaSecondary: "Consult Now",
     },
