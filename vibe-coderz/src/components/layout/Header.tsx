@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Github, Linkedin, Download } from "lucide-react";
+import { Menu, X, Github, Linkedin } from "lucide-react";
 import { content } from "@/data/content";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +43,7 @@ export function Header() {
                         alt="Logo"
                         className="w-10 h-10 object-contain group-hover:rotate-180 transition-transform duration-700"
                     />
-                    <span>VIbe <span className="text-white/60">COderz</span></span>
+                    <span>Vibe <span className="text-white/60">Coderzz</span></span>
                 </Link>
 
                 {/* Desktop Nav */}
@@ -77,14 +77,6 @@ export function Header() {
                                 <Linkedin size={20} />
                             </Link>
                         )}
-                        <a
-                            href="/resume.pdf"
-                            download
-                            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-white text-black rounded-full hover:bg-white/90 transition-colors"
-                        >
-                            <span>Resume</span>
-                            <Download size={16} />
-                        </a>
                     </div>
                 </nav>
 
@@ -139,15 +131,6 @@ export function Header() {
                                 )}
                             </div>
 
-                            <a
-                                href="/resume.pdf"
-                                download
-                                className="inline-flex items-center justify-center gap-2 px-5 py-3 text-base font-medium bg-white text-black rounded-full"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                <span>Download Resume</span>
-                                <Download size={18} />
-                            </a>
                         </nav>
                     </motion.div>
                 )}

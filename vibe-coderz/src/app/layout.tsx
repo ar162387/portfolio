@@ -11,7 +11,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "VIbe COderz | Experience the Vibe of Code",
+  title: "Vibe Coderzz | Experience the Vibe of Code",
   description: "Portfolio of Shah Abdur Rehman - Full Stack Developer",
   icons: {
     icon: [

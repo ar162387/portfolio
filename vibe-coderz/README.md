@@ -1,4 +1,4 @@
-# Vibe Coderz Portfolio
+# Vibe Coderzz Portfolio
 
 A high-performance, immersive 3D portfolio website built for **Syed Shah Abdur Rehman**. This project showcases advanced web engineering capabilities, featuring a galactic 3D background, smooth scroll animations, and a responsive, data-driven architecture.
 

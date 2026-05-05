@@ -1,13 +1,13 @@
 export const content = {
     brand: {
-        name: "VIbe COderz",
+        name: "Vibe Coderzz",
         tagline: "Engineering the Future of Digital Intelligence.",
-        logoText: "VIbe COderz",
+        logoText: "Vibe Coderzz",
     },
     hero: {
         title: "Building Intelligent Digital Ecosystems",
         subtitle: "AI Agents | RAG Systems | Enterprise Solutions",
-        description: "I am Syed Shah Abdur Rehman, the engineer behind Vibe Coderz. I transform businesses through advanced technological integration. From robust E-Commerce foundations to sophisticated AI Agents and RAG systems, I engineer scalable solutions that drive measurable growth and operational efficiency.",
+        description: "I am Syed Shah Abdur Rehman, the engineer behind Vibe Coderzz. I transform businesses through advanced technological integration. From robust E-Commerce foundations to sophisticated AI Agents and RAG systems, I engineer scalable solutions that drive measurable growth and operational efficiency.",
         ctaPrimary: "Explore Solutions",
         ctaSecondary: "Consult Now",
     },
@@ -17,10 +17,10 @@ export const content = {
         details: {
             age: "24",
             degree: "BS Computer Science",
-            email: "ar162387@gmail.com",
+            email: "Vibe.coderz83@gmail.com",
             freelance: "Open for Consultation",
             birthday: "17 Nov 2002",
-            phone: "+44 7487442692",
+            phone: "03029309083",
             city: "Lahore, Pakistan",
         },
         bio: "With a rigorous foundation in Computer Science and over three years of targeted industry experience, I specialize in architecting high-impact digital solutions. My approach is consultative and results-oriented, ensuring that every piece of code serves a strategic business purpose. Whether it's optimizing legacy workflows or deploying state-of-the-art AI agents, my mission is to empower your business with tools that are not just functional, but transformative."
@@ -252,9 +252,9 @@ export const content = {
         ]
     },
     contact: {
-        address: "Lahore, Pakistan",
-        phone: "+92 335 5323617",
-        email: "ar162387@gmail.com",
+        address: "94 D 2 wapda town phase 1 lahore",
+        phone: "03029309083",
+        email: "Vibe.coderz83@gmail.com",
         mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3399.0494498305604!2d74.3587!3d31.5204!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3919000000000000%3A0x0!2zMzHCsDMxJzEzLjQiTiA3NMKwMjEnMzEuMyJF!5e0!3m2!1sen!2s!4v1633023222542!5m2!1sen!2s",
         social: {
             github: "https://github.com/ar162387",
