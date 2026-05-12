@@ -2,16 +2,13 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Github, Linkedin } from "lucide-react";
-import { content } from "@/data/content";
+import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Header() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const pathname = usePathname();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -57,27 +54,6 @@ export function Header() {
                             {link.name}
                         </Link>
                     ))}
-
-                    <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/10">
-                        {content.contact.social?.github && (
-                            <Link
-                                href={content.contact.social.github}
-                                target="_blank"
-                                className="text-white/70 hover:text-white transition-colors"
-                            >
-                                <Github size={20} />
-                            </Link>
-                        )}
-                        {content.contact.social?.linkedin && (
-                            <Link
-                                href={content.contact.social.linkedin}
-                                target="_blank"
-                                className="text-white/70 hover:text-white transition-colors"
-                            >
-                                <Linkedin size={20} />
-                            </Link>
-                        )}
-                    </div>
                 </nav>
 
                 {/* Mobile Toggle */}
@@ -109,28 +85,6 @@ export function Header() {
                                     {link.name}
                                 </Link>
                             ))}
-
-                            <div className="flex items-center gap-4 py-4 border-t border-white/10 mt-2">
-                                {content.contact.social?.github && (
-                                    <Link
-                                        href={content.contact.social.github}
-                                        target="_blank"
-                                        className="text-white/70 hover:text-white"
-                                    >
-                                        <Github size={24} />
-                                    </Link>
-                                )}
-                                {content.contact.social?.linkedin && (
-                                    <Link
-                                        href={content.contact.social.linkedin}
-                                        target="_blank"
-                                        className="text-white/70 hover:text-white"
-                                    >
-                                        <Linkedin size={24} />
-                                    </Link>
-                                )}
-                            </div>
-
                         </nav>
                     </motion.div>
                 )}

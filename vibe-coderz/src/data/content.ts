@@ -255,10 +255,6 @@ export const content = {
         address: "94 D 2 wapda town phase 1 lahore",
         phone: "03029309083",
         email: "Vibe.coderz83@gmail.com",
-        mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3399.0494498305604!2d74.3587!3d31.5204!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3919000000000000%3A0x0!2zMzHCsDMxJzEzLjQiTiA3NMKwMjEnMzEuMyJF!5e0!3m2!1sen!2s!4v1633023222542!5m2!1sen!2s",
-        social: {
-            github: "https://github.com/ar162387",
-            linkedin: "https://www.linkedin.com/in/syed-shah-abdur-rehman-2b1323216"
-        }
+        mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3399.0494498305604!2d74.3587!3d31.5204!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3919000000000000%3A0x0!2zMzHCsDMxJzEzLjQiTiA3NMKwMjEnMzEuMyJF!5e0!3m2!1sen!2s!4v1633023222542!5m2!1sen!2s"
     }
 };

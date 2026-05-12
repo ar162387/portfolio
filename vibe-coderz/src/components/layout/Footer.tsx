@@ -15,15 +15,6 @@ export function Footer() {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-6 text-sm text-white/50">
-                    {content.contact.social?.github && (
-                        <a href={content.contact.social.github} target="_blank" className="hover:text-white transition-colors">GitHub</a>
-                    )}
-                    {content.contact.social?.linkedin && (
-                        <a href={content.contact.social.linkedin} target="_blank" className="hover:text-white transition-colors">LinkedIn</a>
-                    )}
-                </div>
-
                 <div className="text-sm text-white/40">
                     &copy; {currentYear} {content.about.details.city}. All rights reserved.
                 </div>
