@@ -1,79 +1,63 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Stars, Float, Sparkles } from "@react-three/drei";
+import { Stars, Float, Sparkles, PerformanceMonitor, AdaptiveDpr } from "@react-three/drei";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, type MotionValue } from "framer-motion";
+import { BlackHole } from "@/components/3d/Foreground3D";
+import { prefersReducedMotion, isMobileViewport } from "@/lib/scroll";
 
-function WarpTravel({ scrollYProgress }: { scrollYProgress: any }) {
-    // User requested stability/fixed size. Removing camera Z movement.
-    // The "Warp" effect is now just the background stars moving/fading.
-    return null;
-}
-
-function CoreArtifact({ scrollYProgress }: { scrollYProgress: any }) {
+function CoreArtifact({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
     const meshRef = useRef<THREE.Group>(null);
     const innerRef = useRef<THREE.Mesh>(null);
     const outerRef = useRef<THREE.Mesh>(null);
 
     useFrame((state, delta) => {
-        const scroll = scrollYProgress.get(); // 0 to 1
+        const scroll = scrollYProgress.get();
 
         if (meshRef.current) {
-            // Constant slow spin
-            meshRef.current.rotation.y += 0.15 * delta;
-            // Float up/down slightly based on scroll to track page flow
-            meshRef.current.position.y = THREE.MathUtils.lerp(0, -1, scroll);
+            meshRef.current.rotation.y += 0.12 * delta;
+            meshRef.current.position.y = THREE.MathUtils.lerp(0, -1.2, scroll);
+            meshRef.current.position.x = THREE.MathUtils.lerp(0, 2.5, scroll);
+            meshRef.current.scale.setScalar(THREE.MathUtils.lerp(1, 0.5, scroll));
         }
 
         if (innerRef.current) {
-            // Constant rotation speed (User requested no speedup)
-            innerRef.current.rotation.x += 0.2 * delta;
-            innerRef.current.rotation.y += 0.3 * delta;
-
-            // Constant gentle pulse
-            const time = state.clock.getElapsedTime();
-            const scale = 1 + Math.sin(time * 2) * 0.1;
-            innerRef.current.scale.setScalar(scale);
+            innerRef.current.rotation.x += 0.18 * delta;
+            innerRef.current.rotation.y += 0.26 * delta;
+            const pulse = 1 + Math.sin(state.clock.getElapsedTime() * 1.6) * 0.08;
+            innerRef.current.scale.setScalar(pulse);
         }
 
         if (outerRef.current) {
-            outerRef.current.rotation.x -= 0.5 * delta;
-            outerRef.current.rotation.y += 0.3 * delta;
-            // Constant Z rotation
-            outerRef.current.rotation.z += 0.5 * delta;
-
-            // Dynamic color shift directly on the material
+            outerRef.current.rotation.x -= 0.4 * delta;
+            outerRef.current.rotation.z += 0.4 * delta;
             const material = outerRef.current.material as THREE.MeshStandardMaterial;
-            const hue = (0.6 + scroll * 0.4) % 1; // Keep color shift as it's nice
-            material.color.setHSL(hue, 0.8, 0.5);
+            const hue = (0.62 + scroll * 0.25) % 1;
+            material.color.setHSL(hue, 0.85, 0.55);
+            material.emissive.setHSL(hue, 0.9, 0.4);
         }
     });
 
     return (
         <group ref={meshRef}>
-            <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
-                {/* Inner Core */}
+            <Float speed={1.6} rotationIntensity={0.4} floatIntensity={0.9}>
                 <mesh ref={innerRef}>
                     <icosahedronGeometry args={[1.2, 0]} />
-                    <meshStandardMaterial
-                        color="#ffffff"
-                        wireframe
-                        emissive="#ffffff"
-                        emissiveIntensity={0.8}
-                    />
+                    <meshStandardMaterial color="#e9e4ff" wireframe emissive="#a78bfa" emissiveIntensity={1.2} />
                 </mesh>
-
-                {/* Outer Ring */}
                 <mesh ref={outerRef}>
-                    <torusGeometry args={[3, 0.2, 16, 100]} />
+                    <torusGeometry args={[3, 0.14, 16, 120]} />
                     <meshStandardMaterial
-                        color="#3b82f6"
+                        color="#6366f1"
+                        emissive="#4338ca"
+                        emissiveIntensity={0.8}
                         metalness={0.9}
-                        roughness={0.1}
+                        roughness={0.15}
                         transparent
-                        opacity={0.6}
+                        opacity={0.7}
                         wireframe
                     />
                 </mesh>
@@ -82,216 +66,247 @@ function CoreArtifact({ scrollYProgress }: { scrollYProgress: any }) {
     );
 }
 
-function SceneLighting({ scrollYProgress }: { scrollYProgress: any }) {
+function SceneLighting({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
     const lightRef = useRef<THREE.PointLight>(null);
 
     useFrame(() => {
         if (!lightRef.current) return;
         const scroll = scrollYProgress.get();
-
-        // Light dances around as we travel
         lightRef.current.position.x = Math.sin(scroll * Math.PI * 2) * 15;
         lightRef.current.position.y = Math.cos(scroll * Math.PI * 2) * 10;
-        lightRef.current.color.setHSL(scroll, 0.8, 0.6);
+        lightRef.current.color.setHSL((0.6 + scroll * 0.3) % 1, 0.8, 0.6);
     });
 
     return (
         <>
-            <ambientLight intensity={0.2} />
-            <pointLight ref={lightRef} position={[10, 10, 10]} intensity={2} distance={30} />
-            <pointLight position={[-10, -5, -10]} intensity={1} color="#4c1d95" />
+            <ambientLight intensity={0.25} />
+            <pointLight ref={lightRef} position={[10, 10, 10]} intensity={2.2} distance={40} />
+            <pointLight position={[-10, -5, -10]} intensity={1.2} color="#4c1d95" />
+            <directionalLight position={[5, 8, 5]} intensity={0.6} color="#fff4e0" />
         </>
     );
 }
 
-// --- Randomized Cosmic Events System ---
-
-function ShootingStar({ active, onComplete }: { active: boolean; onComplete: () => void }) {
+/**
+ * Self-managing shooting star — no React state, so spawning never triggers a
+ * re-render of the 3D tree (the old setState-per-spawn was a scroll-jank source).
+ */
+function ShootingStar() {
     const ref = useRef<THREE.Group>(null);
     const speed = useRef(0);
+    const active = useRef(false);
+    const cooldown = useRef(3 + Math.random() * 6);
 
-    useEffect(() => {
-        if (active && ref.current) {
-            // Random start position (top/left mostly)
-            const x = (Math.random() - 0.5) * 20;
-            const y = (Math.random() - 0.5) * 20 + 10;
-            ref.current.position.set(x, y, -5);
-            ref.current.lookAt(x + 5, y - 5, -5); // Aim diagonally
-            speed.current = 0.5 + Math.random() * 0.5;
+    useFrame((_, delta) => {
+        const g = ref.current;
+        if (!g) return;
+
+        if (!active.current) {
+            cooldown.current -= delta;
+            if (cooldown.current <= 0 && Math.random() < 0.02) {
+                const x = (Math.random() - 0.5) * 20;
+                const y = (Math.random() - 0.5) * 20 + 10;
+                g.position.set(x, y, -5);
+                g.lookAt(x + 5, y - 5, -5);
+                speed.current = 0.5 + Math.random() * 0.5;
+                g.visible = true;
+                active.current = true;
+            }
+            return;
         }
-    }, [active]);
 
-    useFrame(() => {
-        if (!active || !ref.current) return;
-
-        // Move diagonally down
-        ref.current.translateZ(speed.current);
-
-        // Check if out of bounds
-        if (ref.current.position.y < -15 || ref.current.position.x > 20) {
-            onComplete();
+        g.translateZ(speed.current);
+        if (g.position.y < -15 || g.position.x > 20) {
+            g.visible = false;
+            active.current = false;
+            cooldown.current = 5 + Math.random() * 10;
         }
     });
 
-    if (!active) return null;
-
     return (
-        <group ref={ref}>
-            {/* Trail */}
+        <group ref={ref} visible={false}>
             <mesh rotation={[Math.PI / 2, 0, 0]}>
-                <cylinderGeometry args={[0.02, 0.05, 4]} />
-                <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
+                <cylinderGeometry args={[0.015, 0.05, 4]} />
+                <meshBasicMaterial color="#ffffff" transparent opacity={0.85} />
             </mesh>
         </group>
     );
 }
 
-function Meteoroid({ active, onComplete }: { active: boolean; onComplete: () => void }) {
-    const ref = useRef<THREE.Mesh>(null);
-    const direction = useRef(new THREE.Vector3());
-    const rotSpeed = useRef({ x: 0, y: 0 });
+/** Self-managing fireball meteoroid — lit rocky body + ember trail, refs only. */
+function Fireball() {
+    const groupRef = useRef<THREE.Group>(null);
+    const rockRef = useRef<THREE.Mesh>(null);
+    const emberRef = useRef<THREE.Points>(null);
+    const velocity = useRef(new THREE.Vector3());
+    const gravity = useRef(new THREE.Vector3(0, -2.4, 0));
+    const rot = useRef({ x: 0, y: 0, z: 0 });
+    const life = useRef(0);
+    const active = useRef(false);
+    const cooldown = useRef(8 + Math.random() * 12);
 
-    useEffect(() => {
-        if (active && ref.current) {
-            // Spawn far away
-            const angle = Math.random() * Math.PI * 2;
-            const radius = 25;
-            ref.current.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, -10 + Math.random() * 5);
-
-            // Aim roughly towards center but miss
-            const targetX = (Math.random() - 0.5) * 10;
-            const targetY = (Math.random() - 0.5) * 10;
-            direction.current.subVectors(new THREE.Vector3(targetX, targetY, 0), ref.current.position).normalize().multiplyScalar(0.05); // Slow speed
-
-            rotSpeed.current = { x: Math.random() * 0.02, y: Math.random() * 0.02 };
+    const rockGeo = useMemo(() => {
+        const geo = new THREE.IcosahedronGeometry(0.7, 1);
+        const pos = geo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const f = 0.78 + Math.random() * 0.34;
+            pos.setXYZ(i, pos.getX(i) * f, pos.getY(i) * f, pos.getZ(i) * f);
         }
-    }, [active]);
+        geo.computeVertexNormals();
+        return geo;
+    }, []);
 
-    useFrame(() => {
-        if (!active || !ref.current) return;
+    const emberCount = 50;
+    const emberGeo = useMemo(() => {
+        const geo = new THREE.BufferGeometry();
+        const arr = new Float32Array(emberCount * 3);
+        for (let i = 0; i < emberCount; i++) {
+            arr[i * 3 + 0] = (Math.random() - 0.5) * 0.4;
+            arr[i * 3 + 1] = (Math.random() - 0.5) * 0.4;
+            arr[i * 3 + 2] = i * 0.18;
+        }
+        geo.setAttribute("position", new THREE.BufferAttribute(arr, 3));
+        return geo;
+    }, []);
 
-        ref.current.position.add(direction.current);
-        ref.current.rotation.x += rotSpeed.current.x;
-        ref.current.rotation.y += rotSpeed.current.y;
+    const spawn = (g: THREE.Group) => {
+        life.current = 0;
+        const startX = -16 + Math.random() * 6;
+        const startY = 10 + Math.random() * 6;
+        const startZ = -8 + Math.random() * 10;
+        g.position.set(startX, startY, startZ);
+        const dir = new THREE.Vector3(
+            0.7 + Math.random() * 0.4,
+            -0.9 - Math.random() * 0.3,
+            0.12 + Math.random() * 0.18
+        ).normalize();
+        velocity.current.copy(dir).multiplyScalar(9 + Math.random() * 4);
+        rot.current = {
+            x: (Math.random() - 0.5) * 2,
+            y: (Math.random() - 0.5) * 2,
+            z: (Math.random() - 0.5) * 2,
+        };
+        g.lookAt(startX + dir.x, startY + dir.y, startZ + dir.z);
+        g.visible = true;
+        active.current = true;
+    };
 
-        // Despawn if too far
-        if (ref.current.position.length() > 30) {
-            onComplete();
+    useFrame((state, delta) => {
+        const g = groupRef.current;
+        if (!g) return;
+
+        if (!active.current) {
+            cooldown.current -= delta;
+            if (cooldown.current <= 0 && Math.random() < 0.02) spawn(g);
+            return;
+        }
+
+        life.current += delta;
+        velocity.current.addScaledVector(gravity.current, delta);
+        g.position.addScaledVector(velocity.current, delta);
+
+        if (rockRef.current) {
+            rockRef.current.rotation.x += rot.current.x * delta;
+            rockRef.current.rotation.y += rot.current.y * delta;
+            rockRef.current.rotation.z += rot.current.z * delta;
+        }
+        if (emberRef.current) {
+            (emberRef.current.material as THREE.PointsMaterial).opacity =
+                0.55 + Math.sin(state.clock.elapsedTime * 30) * 0.2;
+        }
+
+        const p = g.position;
+        if (p.y < -16 || p.x > 18 || life.current > 6) {
+            g.visible = false;
+            active.current = false;
+            cooldown.current = 18 + Math.random() * 18;
         }
     });
 
-    if (!active) return null;
-
     return (
-        <mesh ref={ref}>
-            <dodecahedronGeometry args={[0.8, 0]} />
-            <meshStandardMaterial color="#57534e" roughness={0.9} />
-        </mesh>
+        <group ref={groupRef} visible={false}>
+            <mesh ref={rockRef} geometry={rockGeo}>
+                <meshStandardMaterial color="#5b5048" emissive="#ff5a1f" emissiveIntensity={0.5} roughness={1} metalness={0.1} flatShading />
+            </mesh>
+            <mesh position={[0, 0, -0.2]}>
+                <sphereGeometry args={[0.5, 16, 16]} />
+                <meshBasicMaterial color="#ffd9a0" transparent opacity={0.5} />
+            </mesh>
+            <mesh position={[0, 0, 2.2]} rotation={[Math.PI / 2, 0, 0]}>
+                <coneGeometry args={[0.45, 4.5, 16, 1, true]} />
+                <meshBasicMaterial color="#ff7b29" transparent opacity={0.35} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
+            </mesh>
+            <points ref={emberRef} geometry={emberGeo}>
+                <pointsMaterial color="#ffb066" size={0.12} transparent opacity={0.7} blending={THREE.AdditiveBlending} depthWrite={false} />
+            </points>
+        </group>
     );
 }
 
-
-function CosmicEvents() {
-    const [events, setEvents] = useState({
-        shootingStar: false,
-        meteoroid: false
-    });
-
-    // We use a ref to track "cooldowns" to prevent react state spam
-    const cooldowns = useRef({
-        shootingStar: 0,
-        meteoroid: 0
-    });
-
-    useFrame((state, delta) => {
-        // Decrease cooldowns
-        cooldowns.current.shootingStar -= delta;
-        cooldowns.current.meteoroid -= delta;
-
-        // Probabilistic Spawning
-        const r = Math.random();
-
-        // Shooting Star: Frequent (Every ~10-20s)
-        if (!events.shootingStar && cooldowns.current.shootingStar <= 0 && r < 0.005) {
-            setEvents((prev: any) => ({ ...prev, shootingStar: true }));
-        }
-
-        // Meteoroid: Occasional (Every ~30-60s)
-        if (!events.meteoroid && cooldowns.current.meteoroid <= 0 && r < 0.001) {
-            setEvents((prev: any) => ({ ...prev, meteoroid: true }));
-        }
-    });
-
-    return (
-        <>
-            <ShootingStar
-                active={events.shootingStar}
-                onComplete={() => {
-                    setEvents((prev: any) => ({ ...prev, shootingStar: false }));
-                    cooldowns.current.shootingStar = 5 + Math.random() * 10; // 5-15s cooldown
-                }}
-            />
-            <Meteoroid
-                active={events.meteoroid}
-                onComplete={() => {
-                    setEvents((prev: any) => ({ ...prev, meteoroid: false }));
-                    cooldowns.current.meteoroid = 20 + Math.random() * 20; // 20-40s cooldown
-                }}
-            />
-        </>
-    );
+/** Lower render resolution while the user is actively scrolling, restore when idle. */
+function ScrollRegress() {
+    const regress = useThree((s) => s.performance.regress);
+    useEffect(() => {
+        const onScroll = () => regress();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, [regress]);
+    return null;
 }
 
 export function Background3D() {
     const { scrollYProgress } = useScroll();
+    const [lowPower, setLowPower] = useState(false);
+    const [dpr, setDpr] = useState(1.5);
 
-    // Map background color to 6 distinct sections for the "Galactic" journey
-    // 0.0 - 0.16 : Hero (Deep Space Black)
-    // 0.16 - 0.33 : Services (Cosmic Purple)
-    // 0.33 - 0.50 : Skills (Cosmic Purple - Unified)
-    // 0.50 - 0.66 : Portfolio (Cosmic Purple - Unified)
-    // 0.66 - 0.83 : Resume (Deep Indigo)
-    // 0.83 - 1.00 : Contact (Deep Indigo - Unified to prevent black)
+    useEffect(() => {
+        const low = prefersReducedMotion() || isMobileViewport();
+        setLowPower(low);
+        if (low) setDpr(1);
+    }, []);
+
     const backgroundColor = useTransform(
         scrollYProgress,
         [0, 0.2, 0.4, 0.6, 0.8, 1],
-        [
-            "#030014", // Hero: Deep Space Black
-            "#1e1b4b", // Services: Cosmic Purple
-            "#1e1b4b", // Skills: Cosmic Purple (Unified)
-            "#1e1b4b", // Portfolio: Cosmic Purple (Unified)
-            "#312e81", // Resume: Deep Indigo
-            "#312e81"  // Contact: Deep Indigo (Unified per request)
-        ]
+        ["#030014", "#0b0524", "#140a33", "#1a0f3d", "#1e1b4b", "#1b1740"]
     );
 
     return (
-        <motion.div
-            style={{ backgroundColor: backgroundColor }}
-            className="fixed inset-0 z-[-1] transition-colors duration-1000 ease-in-out"
-        >
-            <Canvas camera={{ position: [0, 0, 10], fov: 45 }} gl={{ antialias: true, alpha: true }}>
-                {/* Dynamic Starfield */}
-                <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={2} />
-
-                {/* Floating Particles for Depth */}
-                <Sparkles
-                    count={200}
-                    scale={12}
-                    size={4}
-                    speed={0.4}
-                    opacity={0.5}
-                    color="#ffffff"
+        <motion.div style={{ backgroundColor }} className="fixed inset-0 z-[-1]">
+            <Canvas
+                camera={{ position: [0, 0, 10], fov: 45 }}
+                gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
+                dpr={dpr}
+            >
+                <PerformanceMonitor
+                    onDecline={() => setDpr(1)}
+                    onIncline={() => setDpr((d) => Math.min(d + 0.25, 1.5))}
+                    flipflops={3}
+                    onFallback={() => setDpr(1)}
                 />
+                <ScrollRegress />
 
-                <CosmicEvents />
-                <WarpTravel scrollYProgress={scrollYProgress} />
+                <fog attach="fog" args={["#0a0420", 30, 115]} />
+
+                <Stars radius={120} depth={60} count={lowPower ? 2500 : 4500} factor={4} saturation={0} fade speed={1.2} />
+                {!lowPower && <Sparkles count={120} scale={14} size={3} speed={0.3} opacity={0.4} color="#cdb4ff" />}
+
+                <ShootingStar />
+                {!lowPower && <Fireball />}
                 <CoreArtifact scrollYProgress={scrollYProgress} />
+                <BlackHole scrollYProgress={scrollYProgress} lowPower={lowPower} />
                 <SceneLighting scrollYProgress={scrollYProgress} />
+
+                <EffectComposer enableNormalPass={false}>
+                    <Bloom intensity={0.45} luminanceThreshold={0.72} luminanceSmoothing={0.3} mipmapBlur />
+                </EffectComposer>
+
+                <AdaptiveDpr pixelated />
             </Canvas>
 
-            {/* Grid overlay for 'Cyber' vibe */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+            {/* Cheap CSS vignette + grid (was a postprocessing pass before) */}
+            <div className="absolute inset-0 pointer-events-none [background:radial-gradient(ellipse_at_center,transparent_55%,rgba(0,0,0,0.7)_100%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
         </motion.div>
     );
 }

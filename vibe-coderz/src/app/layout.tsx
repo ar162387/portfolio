@@ -11,8 +11,23 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Vibe Coderzz | Experience the Vibe of Code",
-  description: "Portfolio of Shah Abdur Rehman - Full Stack Developer",
+  title: "Vibe Coderzz | AI Agents, CRMs & Automation Studio",
+  description:
+    "Vibe Coderzz is a software studio building CRMs, management systems, autonomous AI agents, and workflow automation that drive measurable business growth.",
+  keywords: [
+    "AI agents",
+    "automation",
+    "CRM development",
+    "ERP systems",
+    "RAG systems",
+    "custom software studio",
+  ],
+  openGraph: {
+    title: "Vibe Coderzz | AI Agents, CRMs & Automation Studio",
+    description:
+      "We design and build CRMs, management systems, autonomous AI agents, and automation for modern businesses.",
+    type: "website",
+  },
   icons: {
     icon: [
       { url: "/logo.png" },
@@ -36,15 +51,9 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-transparent text-foreground cursor-none`}>
         <CursorEffect />
-        {/* 
-            Background 3D Canvas
-            It is fixed and sits behind everything.
-            We render it here so it persists across pages if we had multiple.
-            We need a wrapper for it since it is a client component.
-        */}
-        <div className="fixed inset-0 z-[-1] pointer-events-none">
-          {/* We will load this lazily or in page.tsx to avoid SSR issues if complex */}
-        </div>
+
+        {/* Film grain overlay — sits above the 3D background, below content */}
+        <div className="grain-overlay" aria-hidden="true" />
 
         {children}
       </body>

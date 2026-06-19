@@ -8,46 +8,49 @@ export function Contact() {
     return (
         <SectionWrapper id="contact" className="pb-32">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24">
-                <div>
-                    <h2 className="text-4xl md:text-6xl font-bold font-space mb-6">Let&apos;s Work Together</h2>
-                    <p className="text-white/60 text-lg mb-12">
-                        Looking for something specific or want to collaborate? Feel free to reach out and let&apos;s build something amazing together!
+                <div data-reveal-child>
+                    <span className="text-sm uppercase tracking-[0.3em] text-accent font-medium">
+                        Start a project
+                    </span>
+                    <h2 className="text-4xl md:text-6xl font-bold font-space mt-4 mb-6 text-text-1">Let&apos;s build it together</h2>
+                    <p className="text-text-2 text-lg mb-12">
+                        Tell us what you&apos;re trying to automate, streamline, or scale. We&apos;ll get back to you with a clear path forward.
                     </p>
 
                     <div className="space-y-8">
                         <div className="flex items-start gap-6">
-                            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 shrink-0">
+                            <div className="w-12 h-12 rounded-full glass flex items-center justify-center shrink-0">
                                 <MapPin className="text-white" size={20} />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold mb-1">Address</h3>
-                                <p className="text-white/60">{content.contact.address}</p>
+                                <h3 className="text-lg font-bold mb-1 text-text-1">Based in</h3>
+                                <p className="text-text-2">{content.contact.location}</p>
                             </div>
                         </div>
 
                         <div className="flex items-start gap-6">
-                            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 shrink-0">
+                            <div className="w-12 h-12 rounded-full glass flex items-center justify-center shrink-0">
                                 <Phone className="text-white" size={20} />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold mb-1">Phone</h3>
-                                <p className="text-white/60">{content.contact.phone}</p>
+                                <h3 className="text-lg font-bold mb-1 text-text-1">Phone</h3>
+                                <p className="text-text-2">{content.contact.phone}</p>
                             </div>
                         </div>
 
                         <div className="flex items-start gap-6">
-                            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 shrink-0">
+                            <div className="w-12 h-12 rounded-full glass flex items-center justify-center shrink-0">
                                 <Mail className="text-white" size={20} />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold mb-1">Email</h3>
-                                <p className="text-white/60">{content.contact.email}</p>
+                                <h3 className="text-lg font-bold mb-1 text-text-1">Email</h3>
+                                <p className="text-text-2">{content.contact.email}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white/5 p-8 rounded-3xl border border-white/10">
+                <div className="glass-strong glass p-8" data-reveal-child>
                     <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
@@ -82,7 +85,7 @@ export function Contact() {
                             <textarea
                                 rows={4}
                                 className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-white/30 transition-colors resize-none"
-                                placeholder="Tell me about your project..."
+                                placeholder="Tell us about your project..."
                             />
                         </div>
 

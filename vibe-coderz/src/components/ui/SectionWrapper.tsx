@@ -1,26 +1,31 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useGsapReveal } from "@/lib/scroll";
 
 interface SectionWrapperProps {
     children: React.ReactNode;
     id?: string;
     className?: string;
-    delay?: number;
+    /** stagger children that carry `data-reveal-child` */
+    stagger?: number;
 }
 
-export function SectionWrapper({ children, id, className, delay = 0 }: SectionWrapperProps) {
+/**
+ * Scroll-linked section. Direct descendants marked with `data-reveal-child`
+ * animate in with a stagger as the section enters; otherwise the whole block
+ * reveals. Honors prefers-reduced-motion via useGsapReveal.
+ */
+export function SectionWrapper({ children, id, className, stagger }: SectionWrapperProps) {
+    const ref = useGsapReveal<HTMLElement>({ stagger });
+
     return (
-        <motion.section
+        <section
             id={id}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, delay, ease: "easeOut" }}
-            className={cn("py-20 md:py-32 container mx-auto px-4", className)}
+            ref={ref}
+            className={cn("py-24 md:py-36 container mx-auto px-4 relative", className)}
         >
             {children}
-        </motion.section>
+        </section>
     );
 }

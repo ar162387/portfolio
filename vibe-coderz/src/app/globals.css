@@ -2,13 +2,20 @@
 
 @layer base {
   :root {
-    --background: #0a0a0a;
+    --background: #030014;
     --foreground: #ffffff;
 
-    /* 
-      Background is controlled by 3D component, 
-      but we keep a fallback here 
-    */
+    /* Deliberate gray ramp so we stop reaching for arbitrary white/xx everywhere */
+    --text-1: rgba(255, 255, 255, 0.96); /* headings */
+    --text-2: rgba(235, 238, 255, 0.72); /* body */
+    --text-3: rgba(210, 215, 245, 0.5); /* muted / captions */
+    --text-4: rgba(190, 196, 230, 0.34); /* faint labels */
+
+    /* Refined cosmic accents */
+    --accent: #8b5cf6; /* violet */
+    --accent-2: #38bdf8; /* sky */
+    --accent-warm: #f59e0b; /* accretion amber */
+
     --card-foreground: #ffffff;
     --popover: #0a0a0a;
     --popover-foreground: #ffffff;
@@ -18,10 +25,6 @@
     --secondary-foreground: #ffffff;
     --muted: #1a1a1a;
     --muted-foreground: #a3a3a3;
-    --accent: #1a1a1a;
-    --accent-foreground: #ffffff;
-    --destructive: #7f1d1d;
-    --destructive-foreground: #ffffff;
     --border: #1a1a1a;
     --input: #1a1a1a;
     --ring: #d4d4d4;
@@ -31,43 +34,200 @@
 @theme {
   --font-sans: var(--font-inter);
   --font-space: var(--font-space);
+
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-text-4: var(--text-4);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+  --color-accent-warm: var(--accent-warm);
 }
 
 @layer base {
   html {
     scroll-behavior: smooth;
+    scrollbar-width: none; /* Firefox */
+    overflow-y: scroll; /* keep layout stable, no width jump */
+  }
+  html::-webkit-scrollbar {
+    display: none; /* Chrome / Safari / Edge */
+  }
+
+  /* Lenis: disable native smooth-scroll so it doesn't fight the JS smoothing */
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
   }
 
   body {
-    /* Standard CSS is often better than @apply for body in v4, but @apply works too */
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
   }
 
-  /* Custom Scrollbar for "Vibe" feel */
-  ::-webkit-scrollbar {
-    width: 8px;
+  /* Premium display headings */
+  .font-space {
+    font-feature-settings: "ss01" 1, "cv01" 1;
+    letter-spacing: -0.02em;
   }
 
-  ::-webkit-scrollbar-track {
-    background: transparent;
+  h1,
+  h2 {
+    text-wrap: balance;
   }
 
-  ::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 9999px;
-  }
+  /* Hide scrollbar */
+  ::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(255, 255, 255, 0.4);
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
+/* ----------------------------------------------------------------------
+   Premium glass system
+   A real glass surface needs: translucent fill, a gradient hairline that
+   catches "light" on the top edge and falls to shadow at the bottom, a soft
+   ambient shadow for lift, and a faint inner specular highlight.
+---------------------------------------------------------------------- */
+.glass {
+  position: relative;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.07),
+      rgba(255, 255, 255, 0.025)
+    );
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid transparent;
+  border-radius: 1.5rem;
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.08) inset,
+    0 -1px 0 0 rgba(0, 0, 0, 0.25) inset,
+    0 20px 50px -20px rgba(0, 0, 0, 0.7);
+}
+
+/* gradient hairline border via mask trick */
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0.35),
+    rgba(255, 255, 255, 0.05) 40%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.glass-strong {
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.1),
+      rgba(255, 255, 255, 0.04)
+    );
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+}
+
+/* Interactive hover glow for cards */
+.glow-border {
+  transition: box-shadow 0.4s ease, transform 0.4s ease;
+}
+.glow-border:hover {
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.12) inset,
+    0 0 0 1px rgba(139, 92, 246, 0.35),
+    0 25px 60px -25px rgba(139, 92, 246, 0.5);
+}
+
+/* Cursor-follow spotlight for cards (uses --mx / --my set in JS) */
+.spotlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    400px circle at var(--mx, 50%) var(--my, 0%),
+    rgba(139, 92, 246, 0.18),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+.spotlight:hover::after {
+  opacity: 1;
+}
+
+/* Keep legacy class working in case anything still references it */
 .glass-panel {
   background-color: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ----------------------------------------------------------------------
+   Film grain — the single biggest fix for the "AI slop" plastic flatness.
+   A fixed, very low-opacity animated noise layer over the whole page.
+---------------------------------------------------------------------- */
+.grain-overlay {
+  position: fixed;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 8s steps(8) infinite;
+}
+
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  10% { transform: translate(-5%, -5%); }
+  30% { transform: translate(3%, -8%); }
+  50% { transform: translate(-4%, 6%); }
+  70% { transform: translate(6%, 3%); }
+  90% { transform: translate(-3%, -4%); }
+  100% { transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grain-overlay {
+    animation: none;
+  }
+}
+
+/* Animated gradient text utility for headline accents */
+.text-gradient {
+  background: linear-gradient(120deg, #ffffff 0%, #c4b5fd 45%, #7dd3fc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

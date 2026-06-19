@@ -23,7 +23,15 @@ export function Portfolio() {
     return (
         <SectionWrapper id="portfolio">
             <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-5xl font-bold font-space mb-6">Selected Works</h2>
+                <span className="text-sm uppercase tracking-[0.3em] text-accent font-medium">
+                    Selected work
+                </span>
+                <h2 className="text-4xl md:text-6xl font-bold font-space mt-4 mb-4 text-text-1">
+                    Shipped, in production
+                </h2>
+                <p className="text-text-2 max-w-xl mx-auto mb-10">
+                    Real platforms we&apos;ve designed and built — from CRMs to location-aware mobile ecosystems.
+                </p>
 
                 {/* Filter */}
                 <div className="flex flex-wrap justify-center gap-3 mb-12">
@@ -34,8 +42,8 @@ export function Portfolio() {
                             className={cn(
                                 "px-6 py-2 rounded-full text-sm font-medium transition-all duration-300",
                                 filter === cat
-                                    ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]"
-                                    : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5"
+                                    ? "bg-white text-black shadow-[0_0_24px_rgba(255,255,255,0.35)]"
+                                    : "glass text-text-2 hover:text-white"
                             )}
                         >
                             {cat}

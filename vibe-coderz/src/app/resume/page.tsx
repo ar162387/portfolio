@@ -17,7 +17,7 @@ export default function ResumePage() {
             {/* Header */}
             <header className="border-b-2 border-black pb-8 mb-8 flex justify-between items-start">
                 <div>
-                    <h1 className="text-4xl font-bold uppercase tracking-tight mb-2">{content.hero.title.replace("We Build", "Shah Abdur")}</h1>
+                    <h1 className="text-4xl font-bold uppercase tracking-tight mb-2">Shah Abdur Rehman</h1>
                     <p className="text-lg text-gray-600 font-medium">Full Stack Developer & Automation Engineer</p>
                 </div>
                 <div className="text-right text-sm space-y-1">

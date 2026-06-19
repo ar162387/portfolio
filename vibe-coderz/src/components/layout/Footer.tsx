@@ -15,8 +15,8 @@ export function Footer() {
                     </p>
                 </div>
 
-                <div className="text-sm text-white/40">
-                    &copy; {currentYear} {content.about.details.city}. All rights reserved.
+                <div className="text-sm text-text-3">
+                    &copy; {currentYear} {content.brand.name}. All rights reserved.
                 </div>
             </div>
         </footer>
