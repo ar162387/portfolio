@@ -1,68 +1,52 @@
-# Vibe Coderzz Portfolio
+# Vibe Coderzz — software, AI & growth studio
 
-A high-performance, immersive 3D portfolio website built for **Syed Shah Abdur Rehman**. This project showcases advanced web engineering capabilities, featuring a galactic 3D background, smooth scroll animations, and a responsive, data-driven architecture.
+A multi-page studio website built with Next.js 16, React 19, TypeScript, and Tailwind CSS. The visual identity combines warm ivory, ink, burnt orange, editorial typography, and a contained orbital hero.
 
-## 🚀 Tech Stack
+## Run locally
 
-### Core Framework
-- **Next.js 15 (App Router)**: Utilizing server components for initial load performance and client components for interactive 3D elements.
-- **TypeScript**: Ensuring type safety and code robustness across the application.
-
-### Styling & Animation
-- **Tailwind CSS**: Utility-first styling for rapid UI development and consistent design tokens.
-- **Framer Motion**: Powering complex scroll-linked animations, page transitions, and UI micro-interactions.
-- **Lucide React**: Modern, consistent icon set.
-
-### 3D Graphics
-- **Three.js**: The core 3D graphics library.
-- **React Three Fiber (R3F)**: A React renderer for Three.js, enabling declarative 3D scene construction.
-- **React Three Drei**: Useful helpers for R3F (Stars, Sparkles, Float).
-- **Custom Shaders/Logic**:
-    - **Galactic Background**: A dynamic starfield with scroll-driven color transitions tracking the user's journey through sections.
-    - **Procedural Events**: A custom "Cosmic Event" system that probabilistically spawns shooting stars, meteoroids, and black holes based on frame deltas.
-
-## 🏗 Architecture
-
-### Directory Structure
-```
-src/
-├── app/                # Next.js App Router pages
-├── components/
-│   ├── 3d/            # Three.js experiences (Background3D, Foreground3D)
-│   ├── layout/        # Semantic layout components (Header, Footer)
-│   ├── portfolio/     # Project showcase components (Modal, Cards)
-│   └── sections/      # Page sections (Hero, Skills, Contact)
-├── data/              # Centralized content store (content.ts)
-└── lib/               # Utility functions (cn, etc.)
-```
-
-### Key Architectural Decisions
-
-1.  **Separation of Concerns (3D Layers)**:
-    -   `Background3D.tsx`: Handles the deep background (stars, nebulae, core artifact). It sits at `z-index: -1`.
-    -   `Foreground3D.tsx`: Handles foreground overlays like the "Void Black Hole". It sits at `z-index: 100` but uses `pointer-events: none` to ensure it doesn't block UI interactions while visually occluding text.
-
-2.  **Data-Driven Content**:
-    -   All text content, project details, skills, and resume data are decoupled from UI components and stored in `src/data/content.ts`. This allows for easy updates without touching React code.
-
-3.  **Performance Optimization**:
-    -   **Canvas Separation**: Heavy 3D calculations are isolated in their own R3F Canvases.
-    -   **Event Throttling**: The cosmic event system uses delta-time tracking and randomization with cooldowns to prevent update-loop interferences.
-    -   **Lazy Loading**: Next.js automatically optimizes images and code-splits routes.
-
-## 🌟 Features
-
--   **Interactive Galactic Scroll**: Background colors shift seamlessly from Deep Space Black to Cosmic Purple and Deep Indigo as the user scrolls.
--   **Rare Cosmic Events**: A probabilistic system interacting with the user's session time (Shooting stars, Black holes).
--   **Unified Project Modal**: A rich media modal for showcasing projects with image galleries and full-screen previews.
--   **Responsive Design**: Fully responsive layout adapting to mobile and desktop viewports.
-
-## 📦 Installation
-
-```bash
+```sh
 npm install
 npm run dev
 ```
 
-## 📄 License
-All rights reserved. Syed Shah Abdur Rehman.
+Production verification:
+
+```sh
+npm run lint
+npm run build
+npm run start
+```
+
+## Content and structure
+
+- `src/data/studio.ts`: service taxonomy, offer details, project corrections, studio notes, and site URL.
+- `src/data/content.ts`: original project records and legacy resume content.
+- `src/components/studio/Shared.tsx`: reusable server-rendered sections.
+- `src/components/studio/Interactive.tsx`: navigation, project filtering, the guided email brief, and pointer-responsive orbital motion.
+- `src/components/studio/Experience.tsx`: motion preferences, scroll methodology, service disclosures and diagrams, screenshot explorer, reading guide, and studio principles.
+- `src/app/experience.css`: interaction states and motion treatments.
+- `src/app/globals.css`: responsive design system.
+
+There are 26 public content pages: home, services, work, studio, insights, contact, 12 service details, five case studies, and three editorial notes. The old `/resume` route remains accessible with noindex metadata and no automatic print dialog.
+
+## Contact
+
+The three-step enquiry form retains answers while moving between direction, project details, and contact information. It validates a brief and creates an encoded `mailto:` draft addressed to the existing studio email. The visitor reviews and sends it in their email app. It does not store submissions or claim a message was sent. Direct email is available as an alternative. A server-side delivery provider can replace this flow when credentials and delivery requirements are available.
+
+## Search foundations
+
+The canonical production origin is `https://www.vibecoderzz.com`. Set `NEXT_PUBLIC_SITE_URL` only when intentionally changing that origin. Pages have unique titles and descriptions, canonical URLs, indexable HTML, internal links, and social previews. The site generates `/sitemap.xml`, `/robots.txt`, Organization schema, and Service schema. No business results, review ratings, or ranking guarantees were invented.
+
+After deployment, verify the production domain in Google Search Console, submit the sitemap, and inspect representative pages. Analytics is intentionally unconfigured until a real property and measurement requirements are supplied. Preview deployments should be protected or configured with noindex at the hosting layer.
+
+Reference: [Google Search Central developer guide](https://developers.google.com/search/docs/fundamentals/get-started-developers).
+
+## Performance and accessibility
+
+Public pages are prerendered. No Three.js, WebGL, animation framework, custom cursor, or smooth-scroll library is shipped. The hero uses a CSS effect that pauses outside the viewport, when the browser tab is hidden, and on user request. Reduced-motion preferences disable animation. Project images use Next.js responsive image optimisation with lazy loading except for the main case-study image.
+
+Native controls, labelled inputs, keyboard focus styles, Escape dismissal, a skip link, responsive navigation, and native FAQ and service disclosures are included. Service disclosures work without JavaScript. A direct email fallback is available when scripts are disabled.
+
+The methodology tracks the current stage during scrolling. Case studies have thumbnail, swipe, and keyboard image navigation with a native modal viewer. Articles have section navigation that tracks reading position. The studio page includes an interactive principles study. A footer motion switch persists the visitor’s preference, and system reduced-motion settings take precedence. Animations pause offscreen or in hidden tabs. No new animation dependencies were added.
+
+See `docs/REBRAND.md` for the audit, decisions, and launch boundary.

@@ -1,61 +1,62 @@
+import { StudioExperience } from "@/components/studio/Experience";
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import { CursorEffect } from "@/components/ui/CursorEffect";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space",
-  weight: ["300", "400", "500", "600", "700"]
-});
-
+import "./experience.css";
+import { Navigation } from "@/components/studio/Interactive";
+import { Footer } from "@/components/studio/Shared";
+import { studio } from "@/data/studio";
+import { jsonLd } from "@/lib/seo";
 export const metadata: Metadata = {
-  title: "Vibe Coderzz | AI Agents, CRMs & Automation Studio",
+  metadataBase: new URL(studio.url),
+  title: {
+    default: "Vibe Coderzz | Software, AI & Growth Studio",
+    template: "%s | Vibe Coderzz",
+  },
   description:
-    "Vibe Coderzz is a software studio building CRMs, management systems, autonomous AI agents, and workflow automation that drive measurable business growth.",
-  keywords: [
-    "AI agents",
-    "automation",
-    "CRM development",
-    "ERP systems",
-    "RAG systems",
-    "custom software studio",
-  ],
+    "Independent software studio in Lahore building custom software, AI automation, web and mobile apps, and search-ready digital experiences for businesses worldwide.",
   openGraph: {
-    title: "Vibe Coderzz | AI Agents, CRMs & Automation Studio",
-    description:
-      "We design and build CRMs, management systems, autonomous AI agents, and automation for modern businesses.",
     type: "website",
+    siteName: "Vibe Coderzz",
+    locale: "en_US",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
-  icons: {
-    icon: [
-      { url: "/logo.png" },
-      { url: "/favicon.ico" },
-    ],
-    apple: "/logo.png",
-  },
+  twitter: { card: "summary_large_image" },
+  robots: { index: true, follow: true },
+  icons: { icon: "/icon.svg" },
 };
-
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
-  // Note: We can't use useState/Hooks here in a Server Component layout.
-  // We need to wrap the body content or insert the Background3D component.
-  // Since Background3D relies on useScroll which needs a scroll container context possibly, 
-  // but framer-motion useScroll works with window by default.
-
+}) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-transparent text-foreground cursor-none`}>
-        <CursorEffect />
-
-        {/* Film grain overlay — sits above the 3D background, below content */}
-        <div className="grain-overlay" aria-hidden="true" />
-
-        {children}
+    <html lang="en">
+      <body>
+        <a className="skip-link" href="#main">
+          Skip to content
+        </a>
+        <Navigation />
+        <StudioExperience />
+        <main id="main">{children}</main>
+        <Footer />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLd({
+              "@type": "Organization",
+              name: studio.name,
+              url: studio.url,
+              email: studio.email,
+              description:
+                "Independent software, AI automation, and digital growth studio.",
+              address: {
+                "@type": "PostalAddress",
+                addressLocality: "Lahore",
+                addressCountry: "PK",
+              },
+            }),
+          }}
+        />
       </body>
     </html>
   );
