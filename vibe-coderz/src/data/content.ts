@@ -19,7 +19,7 @@ export const content = {
             email: "Vibe.coderz83@gmail.com",
             availability: "Open for new projects",
             phone: "03029309083",
-            city: "Lahore, Pakistan",
+            city: "Central London, United Kingdom",
         },
         bio: "Vibecoderzz is a results-oriented software studio. Our approach is consultative: every system we ship serves a strategic business purpose. Whether it's optimizing legacy workflows or deploying state-of-the-art AI agents, our mission is to give your business tools that are not just functional, but transformative."
     },
@@ -248,8 +248,8 @@ export const content = {
         ]
     },
     contact: {
-        address: "94 D 2 wapda town phase 1 lahore",
-        location: "Lahore, Pakistan — working with clients worldwide",
+        address: "Central London, United Kingdom",
+        location: "Central London, United Kingdom — working with clients worldwide",
         phone: "03029309083",
         email: "Vibe.coderz83@gmail.com",
         mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3399.0494498305604!2d74.3587!3d31.5204!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3919000000000000%3A0x0!2zMzHCsDMxJzEzLjQiTiA3NMKwMjEnMzEuMyJF!5e0!3m2!1sen!2s!4v1633023222542!5m2!1sen!2s"

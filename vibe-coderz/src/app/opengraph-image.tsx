@@ -35,7 +35,7 @@ export default function Image() {
         <span style={{ color: "#c74929" }}>Serious pull.</span>
       </div>
       <div style={{ display: "flex", fontSize: 23 }}>
-        Independent software & AI studio. Lahore → Worldwide.
+        Independent software & AI studio. Central London → Worldwide.
       </div>
     </div>,
     size,

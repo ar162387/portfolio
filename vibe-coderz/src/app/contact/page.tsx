@@ -4,7 +4,7 @@ import { studio } from "@/data/studio";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "Start a Project",
-  "Tell Vibecoderzz about your software, AI automation, or digital growth project. Based in Lahore, working worldwide.",
+  "Tell Vibecoderzz about your software, AI automation, or digital growth project. Based in Central London, working worldwide.",
   "/contact",
 );
 export default function Contact() {
@@ -35,7 +35,7 @@ export default function Contact() {
           <h3>Say hello.</h3>
           <a href={`mailto:${studio.email}`}>{studio.email} ↗</a>
           <p>
-            Lahore, Pakistan
+            Central London, United Kingdom
             <br />
             Working with clients worldwide
           </p>

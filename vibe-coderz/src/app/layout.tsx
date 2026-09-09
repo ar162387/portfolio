@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     template: "%s | Vibecoderzz",
   },
   description:
-    "Independent software studio in Lahore building custom software, AI automation, web and mobile apps, and search-ready digital experiences for businesses worldwide.",
+    "Independent software studio in Central London building custom software, AI automation, web and mobile apps, and search-ready digital experiences for businesses worldwide.",
   openGraph: {
     type: "website",
     siteName: "Vibecoderzz",
@@ -51,8 +51,8 @@ export default function RootLayout({
                 "Independent software, AI automation, and digital growth studio.",
               address: {
                 "@type": "PostalAddress",
-                addressLocality: "Lahore",
-                addressCountry: "PK",
+                addressLocality: "Central London",
+                addressCountry: "GB",
               },
             }),
           }}

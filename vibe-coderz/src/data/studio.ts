@@ -2,7 +2,7 @@ import { content } from "./content";
 export const studio = {
   name: "Vibecoderzz",
   email: content.contact.email,
-  location: "Lahore, Pakistan",
+  location: "Central London, United Kingdom",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://www.vibecoderzz.com",
 };
 export const groups = [

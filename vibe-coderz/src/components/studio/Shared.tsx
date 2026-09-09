@@ -185,7 +185,7 @@ export function Footer() {
         </p>
         <div>
           <a href={`mailto:${studio.email}`}>{studio.email} ↗</a>
-          <span>Lahore, Pakistan · Working worldwide</span>
+          <span>Central London, United Kingdom · Working worldwide</span>
         </div>
       </div>
       <div className="footer-bottom">

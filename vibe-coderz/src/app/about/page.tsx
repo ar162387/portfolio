@@ -3,7 +3,7 @@ import { PageIntro, Label, Process, CTA } from "@/components/studio/Shared";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "The Studio",
-  "An independent software studio in Lahore, bringing product thinking and hands-on engineering to custom software, AI, and digital experiences.",
+  "An independent software studio in Central London, bringing product thinking and hands-on engineering to custom software, AI, and digital experiences.",
   "/about",
 );
 export default function About() {
@@ -25,7 +25,7 @@ export default function About() {
             <em>Care about the details.</em>
           </h2>
           <p>
-            Based in Lahore and working with clients worldwide, our practice
+            Based in Central London and working with clients worldwide, our practice
             connects software development, AI automation, and search visibility.
             We bring those disciplines together because your business needs them
             to work together.
