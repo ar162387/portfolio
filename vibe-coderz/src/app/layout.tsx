@@ -1,12 +1,12 @@
 import { StudioExperience } from "@/components/studio/Experience";
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
 import "./experience.css";
 import { Navigation } from "@/components/studio/Interactive";
 import { Footer } from "@/components/studio/Shared";
 import { studio } from "@/data/studio";
 import { jsonLd } from "@/lib/seo";
+import { Analytics } from "@/components/studio/Analytics";
 export const metadata: Metadata = {
   metadataBase: new URL(studio.url),
   title: {
@@ -33,16 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-F2ZSD4EL60"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-F2ZSD4EL60');`}
-        </Script>
+        <Analytics />
         <a className="skip-link" href="#main">
           Skip to content
         </a>

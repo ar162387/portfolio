@@ -29,6 +29,7 @@ import {
 import { groups, projects, studio } from "@/data/studio";
 import { useStudioMotion } from "./Experience";
 import { usePathname } from "next/navigation";
+import { trackEvent } from "./Analytics";
 
 const serviceIcons: Record<string, LucideIcon> = {
   "ai-automation": Workflow,
@@ -474,13 +475,17 @@ export function ContactForm() {
       heading.current?.focus({ preventScroll: true }),
     );
   };
+  const prepareEnquiry = () => {
+    trackEvent("contact_enquiry_prepared", { service: values.service, budget: values.budget });
+    setReady(true);
+  };
   return (
     <form
       className="contact-form guided-brief"
       onSubmit={(e) => {
         e.preventDefault();
         if (step < 2) advance(step + 1);
-        else setReady(true);
+        else prepareEnquiry();
       }}
     >
       <div className="brief-tracker">
@@ -674,7 +679,7 @@ export function ContactForm() {
       {ready && (
         <div className="form-result" role="status">
           <p>Your brief is ready. Open your email app to review and send it.</p>
-          <a className="text-link" href={draft}>
+          <a className="text-link" href={draft} onClick={() => trackEvent("contact_email_draft_opened", { service: values.service })}>
             Open email draft <ArrowUpRight size={16} />
           </a>
           <button

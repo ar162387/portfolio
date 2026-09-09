@@ -195,6 +195,8 @@ export function Footer() {
           <Link href="/work">Work</Link>
           <Link href="/about">Studio</Link>
           <Link href="/contact">Contact</Link>
+          <Link href="/privacy">Privacy</Link>
+          <a href="#cookie-settings">Cookie settings</a>
         </nav>
         <MotionControl />
       </div>

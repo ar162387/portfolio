@@ -96,6 +96,20 @@ img {
   background: var(--paper);
   border-bottom: 1px solid var(--line);
 }
+.cookie-banner { position: fixed; z-index: 100; right: 24px; bottom: 24px; width: min(440px, calc(100vw - 32px)); padding: 26px; color: var(--paper); background: var(--ink); border: 1px solid #44453f; box-shadow: 0 20px 55px rgba(0, 0, 0, 0.24); }
+.cookie-banner h2 { margin: 10px 0; font-size: 25px; line-height: 1.08; }
+.cookie-banner p:not(.eyebrow) { font-size: 14px; color: #d9dad2; }
+.cookie-banner > a { display: inline-block; margin-top: 18px; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.cookie-actions { display: flex; gap: 12px; margin-top: 20px; }
+.cookie-actions button { min-height: 42px; padding: 0 16px; border: 1px solid transparent; }
+.cookie-actions .button { display: inline-flex; align-items: center; gap: 7px; }
+.cookie-reject { color: var(--paper); background: transparent; border-color: #777970 !important; }
+.privacy-page { max-width: 840px; padding-top: 15px; padding-bottom: 100px; }
+.privacy-page section { padding: 30px 0; border-top: 1px solid var(--line); }
+.privacy-page h2 { margin-bottom: 12px; font-size: 28px; }
+.privacy-page p + p { margin-top: 14px; }
+.privacy-page a { color: var(--orange); text-decoration: underline; text-underline-offset: 3px; }
+.privacy-updated { color: var(--muted); font-size: 14px; }
 .nav-wrap {
   max-width: 1440px;
   margin: auto;
