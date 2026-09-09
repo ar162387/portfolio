@@ -2,10 +2,51 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight, ChevronDown, Menu, X, Pause, Play } from "lucide-react";
+import {
+  ArrowUpRight,
+  AudioLines,
+  Bot,
+  BrainCircuit,
+  ChartNoAxesCombined,
+  ChevronDown,
+  Code2,
+  Database,
+  FileText,
+  Menu,
+  MessageCircleMore,
+  PanelsTopLeft,
+  Pause,
+  Play,
+  Search,
+  ShoppingBag,
+  Smartphone,
+  Sparkles,
+  TrendingUp,
+  Workflow,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { groups, projects, studio } from "@/data/studio";
 import { useStudioMotion } from "./Experience";
 import { usePathname } from "next/navigation";
+
+const serviceIcons: Record<string, LucideIcon> = {
+  "ai-automation": Workflow,
+  "ai-agents": Bot,
+  "voice-agents": AudioLines,
+  chatbots: MessageCircleMore,
+  "web-development": PanelsTopLeft,
+  "custom-software": Database,
+  ecommerce: ShoppingBag,
+  "web-mobile-apps": Smartphone,
+  "technical-seo": Search,
+  "organic-growth": FileText,
+  "analytics-insights": ChartNoAxesCombined,
+  "answer-engine-optimisation": Sparkles,
+};
+
+const groupIcons = [BrainCircuit, Code2, TrendingUp];
+
 export function Navigation() {
   const [open, setOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
@@ -39,13 +80,28 @@ export function Navigation() {
     setOpen(false);
     setServicesOpen(false);
   };
+  const closeServicesOnPointer = (pointerType: string) => {
+    if (pointerType === "mouse") setServicesOpen(false);
+  };
   return (
-    <header className="header" ref={root}>
+    <header
+      className="header"
+      ref={root}
+      onPointerLeave={(event) => closeServicesOnPointer(event.pointerType)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setServicesOpen(false);
+        }
+      }}
+    >
       <div className="nav-wrap">
         <Link
           href="/"
           className="wordmark"
           onClick={close}
+          onPointerEnter={(event) =>
+            closeServicesOnPointer(event.pointerType)
+          }
           aria-label="Vibecoderzz home"
         >
           <span className="brand-symbol">
@@ -72,7 +128,19 @@ export function Navigation() {
             className={servicesOpen ? "nav-service active" : "nav-service"}
             aria-expanded={servicesOpen}
             aria-controls="services-menu"
-            onClick={() => setServicesOpen(!servicesOpen)}
+            aria-haspopup="true"
+            onPointerEnter={(event) => {
+              if (event.pointerType === "mouse") setServicesOpen(true);
+            }}
+            onFocus={() => setServicesOpen(true)}
+            onClick={(event) => {
+              const tapNavigation =
+                window.innerWidth <= 760 ||
+                window.matchMedia("(hover: none)").matches;
+              if (tapNavigation || event.detail === 0) {
+                setServicesOpen(!servicesOpen);
+              }
+            }}
           >
             Services <ChevronDown size={13} />
           </button>
@@ -86,11 +154,21 @@ export function Navigation() {
               href={url}
               aria-current={path.startsWith(url) ? "page" : undefined}
               onClick={close}
+              onPointerEnter={(event) =>
+                closeServicesOnPointer(event.pointerType)
+              }
             >
               {name}
             </Link>
           ))}
-          <Link className="nav-cta" href="/contact" onClick={close}>
+          <Link
+            className="nav-cta"
+            href="/contact"
+            onClick={close}
+            onPointerEnter={(event) =>
+              closeServicesOnPointer(event.pointerType)
+            }
+          >
             Let’s talk <ArrowUpRight size={17} />
           </Link>
         </nav>
@@ -98,28 +176,60 @@ export function Navigation() {
       {servicesOpen && (
         <div id="services-menu" className="mega-menu">
           <div className="mega-grid">
-            {groups.map((g) => (
-              <div key={g.code}>
-                <p className="eyebrow">
-                  <span className="orange-dot" />
-                  {g.name}
-                </p>
-                {g.services.map((s) => (
-                  <Link
-                    key={s.slug}
-                    href={`/services/${s.slug}`}
-                    onClick={close}
-                  >
-                    <strong>{s.name}</strong>
-                    <span>{s.summary}</span>
-                  </Link>
-                ))}
-              </div>
-            ))}
+            {groups.map((g, groupIndex) => {
+              const GroupIcon = groupIcons[groupIndex];
+              return (
+                <section className="mega-column" key={g.code}>
+                  <div className="mega-column-heading">
+                    <span className="mega-category-icon">
+                      <GroupIcon size={20} strokeWidth={1.6} />
+                    </span>
+                    <span>
+                      <small>DISCIPLINE {g.code}</small>
+                      <strong>{g.name}</strong>
+                    </span>
+                  </div>
+                  <div className="mega-services">
+                    {g.services.map((s) => {
+                      const ServiceIcon = serviceIcons[s.slug];
+                      return (
+                        <Link
+                          className="mega-service-link"
+                          key={s.slug}
+                          href={`/services/${s.slug}`}
+                          onClick={close}
+                        >
+                          <span className="mega-service-icon">
+                            <ServiceIcon size={17} strokeWidth={1.7} />
+                          </span>
+                          <span className="mega-service-copy">
+                            <strong>{s.name}</strong>
+                            <small>{s.summary}</small>
+                          </span>
+                          <span className="mega-service-arrow">
+                            <ArrowUpRight size={15} />
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
           </div>
           <Link className="mega-bottom" href="/services" onClick={close}>
-            Three disciplines. One connected studio.{" "}
-            <span>Explore all services ↗</span>
+            <span className="mega-bottom-copy">
+              <small>THE FULL PICTURE</small>
+              <strong>
+                Three disciplines. <em>One connected studio.</em>
+              </strong>
+            </span>
+            <span className="mega-bottom-action">
+              Explore all services
+              <i>
+                <ArrowUpRight size={18} />
+              </i>
+            </span>
           </Link>
         </div>
       )}
