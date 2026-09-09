@@ -2,7 +2,7 @@ import { PageIntro, InsightsSection, CTA } from "@/components/studio/Shared";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "Studio Insights",
-  "Practical notes on software decisions, responsible automation, and search-ready website foundations from Vibe Coderzz.",
+  "Practical notes on software decisions, responsible automation, and search-ready website foundations from Vibecoderzz.",
   "/insights",
 );
 export default function Insights() {

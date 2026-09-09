@@ -12,7 +12,7 @@ export default function About() {
       <PageIntro
         label="THE STUDIO / OUR POINT OF VIEW"
         title="Independent minds. Shared ambition."
-        description="Vibe Coderzz began with a developer’s portfolio and grew into a studio with a broader purpose: building the systems that help businesses work better."
+        description="Vibecoderzz began with a developer’s portfolio and grew into a studio with a broader purpose: building the systems that help businesses work better."
       />
       <section className="about-statement">
         <div className="shell">

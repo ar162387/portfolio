@@ -1,4 +1,4 @@
-# Vibe Coderzz — software, AI & growth studio
+# Vibecoderzz — software, AI & growth studio
 
 A multi-page studio website built with Next.js 16, React 19, TypeScript, and Tailwind CSS. The visual identity combines warm ivory, ink, burnt orange, editorial typography, and a contained orbital hero.
 

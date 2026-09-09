@@ -176,7 +176,7 @@ export function Footer() {
     <footer className="footer shell">
       <div className="footer-top">
         <Link href="/" className="wordmark">
-          vibe coderzz<span className="brand-dot">✳</span>
+          vibecoderzz<span className="brand-dot">✳</span>
         </Link>
         <p>
           Independent minds.
@@ -189,7 +189,7 @@ export function Footer() {
         </div>
       </div>
       <div className="footer-bottom">
-        <span>© {new Date().getFullYear()} Vibe Coderzz</span>
+        <span>© {new Date().getFullYear()} Vibecoderzz</span>
         <nav aria-label="Footer navigation">
           <Link href="/services">Services</Link>
           <Link href="/work">Work</Link>

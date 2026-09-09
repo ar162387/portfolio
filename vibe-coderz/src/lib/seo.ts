@@ -10,7 +10,7 @@ export function pageMetadata(
     description,
     alternates: { canonical: path },
     openGraph: {
-      title: `${title} | Vibe Coderzz`,
+      title: `${title} | Vibecoderzz`,
       description,
       url: path,
       images: [{ url: "/opengraph-image", width: 1200, height: 630 }],

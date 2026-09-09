@@ -1,14 +1,14 @@
 export const content = {
     brand: {
-        name: "Vibe Coderzz",
+        name: "Vibecoderzz",
         tagline: "Engineering the Future of Digital Intelligence.",
-        logoText: "Vibe Coderzz",
+        logoText: "Vibecoderzz",
     },
     hero: {
         titleLine1: "Intelligent software,",
         titleLine2: "built to scale.",
         subtitle: "AI Agents · CRMs · Management Systems · Automation",
-        description: "Vibe Coderzz is a software studio building CRMs, management systems, autonomous AI agents, and workflow automation — scalable platforms that drive measurable growth and operational efficiency.",
+        description: "Vibecoderzz is a software studio building CRMs, management systems, autonomous AI agents, and workflow automation — scalable platforms that drive measurable growth and operational efficiency.",
         ctaPrimary: "See our work",
         ctaSecondary: "Start a project",
     },
@@ -21,7 +21,7 @@ export const content = {
             phone: "03029309083",
             city: "Lahore, Pakistan",
         },
-        bio: "Vibe Coderzz is a results-oriented software studio. Our approach is consultative: every system we ship serves a strategic business purpose. Whether it's optimizing legacy workflows or deploying state-of-the-art AI agents, our mission is to give your business tools that are not just functional, but transformative."
+        bio: "Vibecoderzz is a results-oriented software studio. Our approach is consultative: every system we ship serves a strategic business purpose. Whether it's optimizing legacy workflows or deploying state-of-the-art AI agents, our mission is to give your business tools that are not just functional, but transformative."
     },
     stats: [
         { label: "Enterprise Solutions", value: "50+", sub: "Delivered Excellence" },

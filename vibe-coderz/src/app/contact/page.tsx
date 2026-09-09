@@ -4,7 +4,7 @@ import { studio } from "@/data/studio";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "Start a Project",
-  "Tell Vibe Coderzz about your software, AI automation, or digital growth project. Based in Lahore, working worldwide.",
+  "Tell Vibecoderzz about your software, AI automation, or digital growth project. Based in Lahore, working worldwide.",
   "/contact",
 );
 export default function Contact() {

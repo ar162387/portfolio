@@ -9,14 +9,14 @@ import { jsonLd } from "@/lib/seo";
 export const metadata: Metadata = {
   metadataBase: new URL(studio.url),
   title: {
-    default: "Vibe Coderzz | Software, AI & Growth Studio",
-    template: "%s | Vibe Coderzz",
+    default: "Vibecoderzz | Software, AI & Growth Studio",
+    template: "%s | Vibecoderzz",
   },
   description:
     "Independent software studio in Lahore building custom software, AI automation, web and mobile apps, and search-ready digital experiences for businesses worldwide.",
   openGraph: {
     type: "website",
-    siteName: "Vibe Coderzz",
+    siteName: "Vibecoderzz",
     locale: "en_US",
     images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },

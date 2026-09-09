@@ -16,7 +16,7 @@ export default function ResumePage() {
             Full Stack Developer & Automation Engineer
           </p>
         </div>
-        <div className="text-right text-sm space-y-1">
+        <div className="text-right text-base space-y-1">
           <div className="flex items-center justify-end gap-2">
             <span>{content.contact.email}</span>
             <Mail size={14} />
@@ -41,24 +41,24 @@ export default function ResumePage() {
             </h3>
             <div className="space-y-4">
               <div>
-                <h4 className="font-bold text-sm mb-2">Languages</h4>
-                <p className="text-sm leading-relaxed text-gray-700">
+                <h4 className="font-bold text-base mb-2">Languages</h4>
+                <p className="text-base leading-relaxed text-gray-700">
                   {content.skills.languages
                     .map((skill) => skill.name)
                     .join(", ")}
                 </p>
               </div>
               <div>
-                <h4 className="font-bold text-sm mb-2">Frameworks</h4>
-                <p className="text-sm leading-relaxed text-gray-700">
+                <h4 className="font-bold text-base mb-2">Frameworks</h4>
+                <p className="text-base leading-relaxed text-gray-700">
                   {content.skills.frameworks
                     .map((skill) => skill.name)
                     .join(", ")}
                 </p>
               </div>
               <div>
-                <h4 className="font-bold text-sm mb-2">Tools</h4>
-                <p className="text-sm leading-relaxed text-gray-700">
+                <h4 className="font-bold text-base mb-2">Tools</h4>
+                <p className="text-base leading-relaxed text-gray-700">
                   {content.skills.tools.map((skill) => skill.name).join(", ")}
                 </p>
               </div>
@@ -72,11 +72,11 @@ export default function ResumePage() {
             <div className="space-y-4">
               {content.resume.education.map((edu, i) => (
                 <div key={i}>
-                  <h4 className="font-bold text-sm">{edu.degree}</h4>
-                  <p className="text-xs text-gray-600 mb-1">
+                  <h4 className="font-bold text-base">{edu.degree}</h4>
+                  <p className="text-sm text-gray-600 mb-1">
                     {edu.institution}
                   </p>
-                  <p className="text-xs text-gray-500 italic">{edu.desc}</p>
+                  <p className="text-sm text-gray-500 italic">{edu.desc}</p>
                 </div>
               ))}
             </div>
@@ -89,7 +89,7 @@ export default function ResumePage() {
             <h3 className="text-lg font-bold uppercase border-b border-gray-300 pb-2 mb-4">
               Profile
             </h3>
-            <p className="text-sm leading-relaxed text-gray-800">
+            <p className="text-base leading-relaxed text-gray-800">
               {content.resume.summary}
             </p>
           </section>
@@ -103,14 +103,14 @@ export default function ResumePage() {
                 <div key={i}>
                   <div className="flex justify-between items-baseline mb-1">
                     <h4 className="font-bold text-md">{job.role}</h4>
-                    <span className="text-xs font-semibold bg-gray-100 px-2 py-0.5 rounded">
+                    <span className="text-sm font-semibold bg-gray-100 px-2 py-0.5 rounded">
                       {job.period}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">
+                  <p className="text-base font-medium text-gray-700 mb-2">
                     {job.company}
                   </p>
-                  <p className="text-sm text-gray-600 leading-relaxed">
+                  <p className="text-base text-gray-600 leading-relaxed">
                     {job.desc}
                   </p>
                 </div>
@@ -126,12 +126,12 @@ export default function ResumePage() {
               {content.portfolio.slice(0, 3).map((proj, i) => (
                 <div key={i}>
                   <div className="flex justify-between items-baseline mb-1">
-                    <h4 className="font-bold text-sm">{proj.title}</h4>
-                    <span className="text-xs text-gray-500">
+                    <h4 className="font-bold text-base">{proj.title}</h4>
+                    <span className="text-sm text-gray-500">
                       {proj.category}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600">Tech: {proj.tech}</p>
+                  <p className="text-sm text-gray-600">Tech: {proj.tech}</p>
                 </div>
               ))}
             </div>
@@ -140,7 +140,7 @@ export default function ResumePage() {
       </div>
 
       {/* Print Instructions Only Visible on Screen */}
-      <div className="fixed bottom-4 right-4 bg-black text-white px-4 py-2 rounded-lg shadow-lg print:hidden text-sm">
+      <div className="fixed bottom-4 right-4 bg-black text-white px-4 py-2 rounded-lg shadow-lg print:hidden text-base">
         Press Ctrl+P / Cmd+P to save as PDF
       </div>
     </div>

@@ -13,7 +13,7 @@ This is a source-code and product-structure audit. It is not a measurement of ac
 
 ## Direction
 
-Keep the Vibe Coderzz name, replace the portfolio presentation with a connected studio offer, and reinterpret its cosmic identity as a quieter visual signature. Velnox informed the service information architecture only; its copy, client claims, designs, and code were not imported.
+Keep the Vibecoderzz name, replace the portfolio presentation with a connected studio offer, and reinterpret its cosmic identity as a quieter visual signature. Velnox informed the service information architecture only; its copy, client claims, designs, and code were not imported.
 
 Service groups:
 

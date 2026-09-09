@@ -8,8 +8,42 @@ import {
   CTA,
 } from "@/components/studio/Shared";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowDown, ArrowUpRight } from "lucide-react";
 export const metadata = { alternates: { canonical: "/" } };
+
+const clients = [
+  { name: "RAR Studio", logo: "/client-logos/rar-studio.png", width: 1002, height: 547 },
+  { name: "DoorStep", logo: "/client-logos/doorstep.svg", width: 1080, height: 1080 },
+  { name: "TGIF Dabba", logo: "/client-logos/tgif-dabba.jpg", width: 1261, height: 192 },
+  { name: "KIIR", logo: "/client-logos/kiir.png", width: 117, height: 44 },
+  { name: "Heal Pakistan", logo: "/client-logos/heal-pakistan.jpg", width: 113, height: 123 },
+  { name: "Velnox", logo: "/client-logos/velnox.webp", width: 705, height: 625 },
+  { name: "Black Stone", logo: "/client-logos/black-stone.png", width: 1681, height: 2123 },
+  { name: "NIMBESS", logo: "/client-logos/nimbess.png", width: 8000, height: 1577 },
+];
+
+function ClientLogoSet({ duplicate = false }: { duplicate?: boolean }) {
+  return (
+    <div className="client-logo-set" aria-hidden={duplicate || undefined}>
+      {clients.map((client) => (
+        <span
+          className={`client-logo client-logo-${client.name.toLowerCase().replaceAll(" ", "-")}`}
+          key={client.name}
+        >
+          <Image
+            src={client.logo}
+            alt={duplicate ? "" : `${client.name} logo`}
+            width={client.width}
+            height={client.height}
+            sizes="180px"
+          />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function Home() {
   return (
     <>
@@ -56,15 +90,12 @@ export default function Home() {
           </a>
         </div>
       </section>
-      <div className="capability-strip">
-        <div className="shell">
-          <span>AI & AUTOMATION</span>
-          <i>✳</i>
-          <span>WEB & MOBILE PRODUCTS</span>
-          <i>✳</i>
-          <span>CUSTOM SOFTWARE</span>
-          <i>✳</i>
-          <span>SEO & GROWTH</span>
+      <div className="capability-strip" aria-label="Selected clients">
+        <div className="client-marquee">
+          <div className="client-marquee-track">
+            <ClientLogoSet />
+            <ClientLogoSet duplicate />
+          </div>
         </div>
       </div>
       <ServicesSection />

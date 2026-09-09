@@ -1553,3 +1553,24 @@
 .offscreen *::after {
   animation-play-state: paused !important;
 }
+
+/* Keep expressive headings, but raise all supporting text to a comfortable
+   reading size across the interactive experience. */
+.studio-motion-control, .disclosure-index, .method-step .eyebrow,
+.blueprint-heading .eyebrow, .blueprint-heading > span,
+.blueprint-preview > span, .blueprint-note, .explorer-screen > figcaption,
+.explorer-hint, .reading-guide > .eyebrow, .reading-guide a > span,
+.principle-copy > .eyebrow, .brief-tracker > span, .brief-segments button,
+.signal-node, .signal-caption, .option-index, .brief-character-count,
+.brief-summary > .eyebrow { font-size: 12px; }
+
+.service-disclosure-trigger, .service-disclosure-panel p,
+.service-disclosure-panel a, .method-sticky > p:not(.eyebrow),
+.method-step > p:not(.eyebrow), .method-output, .blueprint-switches button,
+.blueprint-preview > strong, .image-count > span, .expand-image,
+.dialog-toolbar, .dialog-toolbar button, .reading-guide a, .principle-copy p,
+.brief-stage-intro, .brief-options legend, .contact-form .brief-options label,
+.brief-back, .brief-small-note, .brief-summary > p,
+.brief-summary .brief-excerpt, .brief-summary > button, .copy-brief,
+.story-choice strong, .story-choice small, .blueprint-preview .story-category,
+.story-caption > span, .story-caption p { font-size: 14px; }

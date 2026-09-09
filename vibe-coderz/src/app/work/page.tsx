@@ -3,7 +3,7 @@ import { PageIntro, CTA } from "@/components/studio/Shared";
 import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata(
   "Selected Work & Case Studies",
-  "Explore custom CRM systems, mobile apps, restaurant platforms, and building management software by Vibe Coderzz.",
+  "Explore custom CRM systems, mobile apps, restaurant platforms, and building management software by Vibecoderzz.",
   "/work",
 );
 export default function WorkPage() {

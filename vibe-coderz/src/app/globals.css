@@ -557,20 +557,77 @@ img {
   background: #eaeae2;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+  overflow: hidden;
 }
-.capability-strip > div {
+.client-marquee {
+  width: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 4%,
+    #000 96%,
+    transparent
+  );
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+.client-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: client-marquee 34s linear infinite;
+  will-change: transform;
+}
+.client-logo-set {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  min-height: 68px;
-  font: 10px monospace;
-  letter-spacing: 1.5px;
+  flex: none;
+  gap: clamp(50px, 6vw, 94px);
+  min-height: 92px;
+  padding-right: clamp(50px, 6vw, 94px);
 }
-.capability-strip i {
-  font-size: 22px;
-  color: #a4a895;
-  font-style: normal;
+.client-logo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 138px;
+  height: 68px;
+}
+.client-logo img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 138px;
+  max-height: 58px;
+  object-fit: contain;
+}
+.client-logo-rar-studio img,
+.client-logo-tgif-dabba img,
+.client-logo-nimbess img {
+  max-width: 170px;
+}
+.client-logo-kiir img {
+  width: 150px;
+  max-width: 150px;
+  max-height: 58px;
+}
+.client-logo-heal-pakistan img {
+  width: auto;
+  height: 74px;
+  max-width: 74px;
+  max-height: 74px;
+}
+.client-logo-velnox img {
+  max-width: 86px;
+  max-height: 76px;
+}
+.client-logo-black-stone img {
+  max-width: 64px;
+  max-height: 80px;
+}
+@keyframes client-marquee {
+  to {
+    transform: translateX(-50%);
+  }
 }
 .services-section {
   padding-top: 99px;
@@ -1640,17 +1697,54 @@ details > p {
   .hero-bottom a {
     gap: 9px;
   }
-  .capability-strip > div {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    padding-top: 20px;
-    padding-bottom: 20px;
-    font-size: 8px;
-    letter-spacing: 1px;
+  .client-marquee {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent,
+      #000 7%,
+      #000 93%,
+      transparent
+    );
+    mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
   }
-  .capability-strip i {
-    display: none;
+  .client-marquee-track {
+    animation-duration: 26s;
+  }
+  .client-logo-set {
+    min-height: 78px;
+    gap: 38px;
+    padding-right: 38px;
+  }
+  .client-logo {
+    width: 112px;
+    height: 58px;
+  }
+  .client-logo img {
+    max-width: 112px;
+    max-height: 50px;
+  }
+  .client-logo-rar-studio img,
+  .client-logo-tgif-dabba img,
+  .client-logo-nimbess img {
+    max-width: 140px;
+  }
+  .client-logo-kiir img {
+    width: 128px;
+    max-width: 128px;
+    max-height: 50px;
+  }
+  .client-logo-heal-pakistan img {
+    height: 62px;
+    max-width: 62px;
+    max-height: 62px;
+  }
+  .client-logo-velnox img {
+    max-width: 70px;
+    max-height: 62px;
+  }
+  .client-logo-black-stone img {
+    max-width: 52px;
+    max-height: 66px;
   }
   .services-section {
     padding-top: 62px;
@@ -1899,4 +1993,27 @@ details > p {
   .skip-link {
     display: none;
   }
+}
+
+/* Readable supporting type: display headings retain their designed scale. */
+.nav-links, .availability, .mega-grid a span, .mega-bottom, .eyebrow,
+.hero-footnote, .hero-bottom, .art-index, .project-overline, .visual-number,
+.note-no, .footer-bottom, .breadcrumbs { font-size: 12px; }
+
+.hero-copy > p, .section-heading > p,
+.section-heading > div > p:not(.eyebrow), .service-column > p,
+.project-info p, .manifesto-bottom p, .process-grid p, details > p,
+.cta-inner > div > p:not(.eyebrow), .footer-top > p, .footer-top > div,
+.footer-top > div > span, .detail-aside p, .project-facts p,
+.contact-aside p, .contact-aside a, .about-statement p,
+.article-body .source-link { font-size: 16px; }
+
+.button, .text-link, .mega-grid a strong, .service-links a, .filters button,
+.contact-form label, .form-note, .form-result, .article-card .eyebrow {
+  font-size: 14px;
+}
+
+.intro-description, .detail-body > p, .detail-body li, .article-body p,
+.contact-form input, .contact-form select, .contact-form textarea, summary {
+  font-size: 17px;
 }

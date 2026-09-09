@@ -46,12 +46,12 @@ export function Navigation() {
           href="/"
           className="wordmark"
           onClick={close}
-          aria-label="Vibe Coderzz home"
+          aria-label="Vibecoderzz home"
         >
           <span className="brand-symbol">
             v<span>c</span>
           </span>
-          vibe coderzz<span className="brand-dot">✳</span>
+          vibecoderzz<span className="brand-dot">✳</span>
         </Link>
         <button
           className="mobile-toggle"

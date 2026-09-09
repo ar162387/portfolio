@@ -34,7 +34,7 @@ export default async function Article({
         <span>{a.category}</span>
       </nav>
       <PageIntro
-        label={`${a.category} / BY VIBE CODERZZ`}
+        label={`${a.category} / BY VIBECODERZZ`}
         title={a.title}
         description={a.summary}
       />

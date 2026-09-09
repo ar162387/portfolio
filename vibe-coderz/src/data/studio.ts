@@ -1,6 +1,6 @@
 import { content } from "./content";
 export const studio = {
-  name: "Vibe Coderzz",
+  name: "Vibecoderzz",
   email: content.contact.email,
   location: "Lahore, Pakistan",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://www.vibecoderzz.com",
