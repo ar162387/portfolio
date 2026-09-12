@@ -164,12 +164,6 @@ img {
   background: none;
   padding: 15px 0;
 }
-.nav-service svg {
-  transition: transform 0.25s ease;
-}
-.nav-service.active svg {
-  transform: rotate(180deg);
-}
 .nav-cta {
   display: flex;
   align-items: center;
@@ -2199,4 +2193,162 @@ details > p {
 .intro-description, .detail-body > p, .detail-body li, .article-body p,
 .contact-form input, .contact-form select, .contact-form textarea, summary {
   font-size: 17px;
+}
+
+/* Accessibility pass: make navigation, actions, and reading copy comfortable
+   at 100% browser zoom. Decorative artwork labels keep their smaller scale. */
+.nav-links {
+  font-size: 16px;
+}
+.nav-links > a:not(.nav-cta),
+.nav-service {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+}
+.nav-cta {
+  min-height: 52px;
+  padding-inline: 24px;
+}
+.mega-column-heading small,
+.mega-bottom-copy small {
+  font-size: 12px;
+}
+.mega-column-heading strong,
+.mega-service-copy strong {
+  font-size: 16px;
+}
+.mega-service-copy small {
+  font-size: 14px;
+  line-height: 1.45;
+}
+.mega-bottom-copy strong {
+  font-size: 18px;
+}
+.mega-bottom-action {
+  font-size: 16px;
+}
+.availability,
+.hero-footnote {
+  font-size: 15px;
+}
+.hero-copy > p,
+.section-heading > p,
+.section-heading > div > p:not(.eyebrow),
+.service-column > p,
+.manifesto-bottom p,
+.cta-inner > div > p:not(.eyebrow),
+.about-statement p {
+  font-size: 18px;
+}
+.button,
+.text-link,
+.service-links a,
+.filters button {
+  font-size: 16px;
+  line-height: 1.4;
+}
+.button,
+.filters button {
+  min-height: 48px;
+}
+.service-links a {
+  min-height: 56px;
+}
+.hero-bottom {
+  font-size: 13px;
+}
+.project-info p,
+.project-facts p {
+  font-size: 15px;
+}
+.process-grid p,
+details > p,
+.detail-aside p,
+.contact-aside p,
+.contact-aside a {
+  font-size: 16px;
+}
+summary,
+.intro-description,
+.detail-body > p,
+.detail-body li,
+.article-body p {
+  font-size: 18px;
+}
+.article-card .eyebrow {
+  font-size: 12px;
+}
+.footer-top > p,
+.footer-top > div {
+  font-size: 16px;
+}
+.footer-top > div > span {
+  font-size: 14px;
+}
+.footer-bottom {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.breadcrumbs {
+  font-size: 14px;
+}
+.contact-form label,
+.contact-form input,
+.contact-form select,
+.contact-form textarea,
+.form-result {
+  font-size: 16px;
+}
+.form-note,
+.article-body .source-link,
+.cookie-banner > a {
+  font-size: 15px;
+}
+.cookie-banner p:not(.eyebrow),
+.cookie-actions button {
+  font-size: 16px;
+}
+
+@media (max-width: 760px) {
+  .nav-links {
+    font-size: 17px;
+  }
+  .nav-links > a,
+  .nav-service {
+    min-height: 52px;
+  }
+  .hero-topline .eyebrow,
+  .cta-inner .eyebrow {
+    font-size: 11px;
+  }
+  .hero-copy > p,
+  .section-heading > p,
+  .section-heading > div > p:not(.eyebrow),
+  .service-column > p,
+  .manifesto-bottom p,
+  .process-grid p,
+  details > p,
+  .cta-inner > div > p:not(.eyebrow),
+  .intro-description,
+  .detail-body > p,
+  .article-body p,
+  .about-statement p {
+    font-size: 17px;
+  }
+  .button,
+  .text-link,
+  .hero-actions .text-link,
+  .service-links a,
+  summary {
+    font-size: 16px;
+  }
+  .footer-top > p,
+  .footer-top > div {
+    font-size: 15px;
+  }
+  .footer-bottom,
+  .breadcrumbs {
+    font-size: 13px;
+  }
 }

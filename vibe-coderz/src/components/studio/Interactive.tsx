@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -8,15 +8,12 @@ import {
   Bot,
   BrainCircuit,
   ChartNoAxesCombined,
-  ChevronDown,
   Code2,
   Database,
   FileText,
   Menu,
   MessageCircleMore,
   PanelsTopLeft,
-  Pause,
-  Play,
   Search,
   ShoppingBag,
   Smartphone,
@@ -27,7 +24,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { groups, projects, studio } from "@/data/studio";
-import { useStudioMotion } from "./Experience";
 import { usePathname } from "next/navigation";
 import { trackEvent } from "./Analytics";
 
@@ -143,7 +139,7 @@ export function Navigation() {
               }
             }}
           >
-            Services <ChevronDown size={13} />
+            Services
           </button>
           {[
             ["/work", "Work"],
@@ -235,139 +231,6 @@ export function Navigation() {
         </div>
       )}
     </header>
-  );
-}
-export function Orbit() {
-  const enabled = useStudioMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const [paused, setPaused] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(([entry]) =>
-      el.classList.toggle("offscreen", !entry.isIntersecting),
-    );
-    observer.observe(el);
-    const visibility = () => el.classList.toggle("hidden-tab", document.hidden);
-    document.addEventListener("visibilitychange", visibility);
-    return () => {
-      observer.disconnect();
-      document.removeEventListener("visibilitychange", visibility);
-    };
-  }, []);
-  useEffect(() => {
-    const el = ref.current;
-    const hero = el?.closest<HTMLElement>(".hero");
-    if (!el || !hero) return;
-    if (!enabled || paused) {
-      el.style.setProperty("--field-x", "0");
-      el.style.setProperty("--field-y", "0");
-      el.style.setProperty("--hero-travel", "0");
-      return;
-    }
-    let frame = 0;
-    let x = 0,
-      y = 0;
-    const render = () => {
-      frame = 0;
-      el.style.setProperty("--field-x", String(x));
-      el.style.setProperty("--field-y", String(y));
-      const bounds = hero.getBoundingClientRect();
-      if (bounds.bottom > 0)
-        el.style.setProperty(
-          "--hero-travel",
-          String(Math.min(1, Math.max(0, -bounds.top / bounds.height))),
-        );
-    };
-    const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(render);
-    };
-    const move = (event: PointerEvent) => {
-      if (event.pointerType !== "mouse") return;
-      const bounds = hero.getBoundingClientRect();
-      x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
-      y = ((event.clientY - bounds.top) / bounds.height) * 2 - 1;
-      schedule();
-    };
-    const reset = () => {
-      x = 0;
-      y = 0;
-      schedule();
-    };
-    hero.addEventListener("pointermove", move);
-    hero.addEventListener("pointerleave", reset);
-    window.addEventListener("scroll", schedule, { passive: true });
-    return () => {
-      hero.removeEventListener("pointermove", move);
-      hero.removeEventListener("pointerleave", reset);
-      window.removeEventListener("scroll", schedule);
-      cancelAnimationFrame(frame);
-    };
-  }, [enabled, paused]);
-  return (
-    <div className={`orbit-art ${paused ? "paused" : ""}`} ref={ref}>
-      <div className="field-stars" aria-hidden="true">
-        {Array.from({ length: 22 }, (_, i) => (
-          <i
-            key={i}
-            style={
-              {
-                left: `${(i * 43 + 7) % 96}%`,
-                top: `${(i * 29 + 13) % 91}%`,
-                "--star-delay": `${(i % 7) * -0.9}s`,
-                "--star-duration": `${5 + (i % 4)}s`,
-              } as CSSProperties
-            }
-          />
-        ))}
-      </div>
-      <div className="orbital-grid" />
-      <div className="orbit-axis axis-one" />
-      <div className="orbit-axis axis-two" />
-      {["one", "two", "three"].map((track, ring) => (
-        <div key={track} className={`orbit-track track-${track}`} aria-hidden="true">
-          {Array.from({ length: 4 }, (_, dot) => (
-            <span
-              key={dot}
-              className="orbit-particle"
-              style={
-                {
-                  "--particle-start": `${dot * 25 + ring * 7}%`,
-                  "--particle-end": `${dot * 25 + ring * 7 + 100}%`,
-                  "--blink-duration": `${3.2 + dot * 0.7 + ring * 0.4}s`,
-                  "--blink-delay": `${-dot * 1.3 - ring * 0.8}s`,
-                } as CSSProperties
-              }
-            />
-          ))}
-        </div>
-      ))}
-      <div className="blackhole">
-        <div className="accretion" />
-        <div className="event-horizon" />
-      </div>
-      <span className="orbit-coordinate coordinate-top">
-        VC / FIELD EXPERIMENT 001
-      </span>
-      <span className="orbit-coordinate coordinate-bottom">
-        IDEAS HAVE GRAVITY.
-      </span>
-      <span className="orbit-cross cross-one">+</span>
-      <span className="orbit-cross cross-two">+</span>
-      <div className="orbit-caption">
-        <span className="orange-dot" /> A little cosmic energy. A lot of
-        engineering.
-      </div>
-      <button
-        className="motion-toggle"
-        onClick={() => setPaused(!paused)}
-        aria-label={
-          paused ? "Play orbital animation" : "Pause orbital animation"
-        }
-      >
-        {paused ? <Play size={13} /> : <Pause size={13} />}
-      </button>
-    </div>
   );
 }
 export function WorkGrid({ featured = false }: { featured?: boolean }) {

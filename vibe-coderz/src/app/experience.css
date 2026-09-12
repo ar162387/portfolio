@@ -1574,3 +1574,93 @@
 .brief-summary .brief-excerpt, .brief-summary > button, .copy-brief,
 .story-choice strong, .story-choice small, .blueprint-preview .story-category,
 .story-caption > span, .story-caption p { font-size: 14px; }
+
+/* Blender sculptures: reserved space and a rendered poster before WebGL. */
+.model-visual { position: relative; width: 100%; isolation: isolate; }
+.model-poster { object-fit: contain; transition: opacity .4s ease; }
+.model-canvas { position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease; }
+.model-canvas canvas { display: block; width: 100%; height: 100%; }
+.model-visual[data-ready="true"] .model-canvas { opacity: 1; }
+.model-visual[data-ready="true"] .model-poster { opacity: 0; }
+.hero-orbit-model { position: absolute; inset: 0; height: 100%; }
+.orbit-art .motion-toggle { z-index: 2; }
+.principle-model { height: 255px; margin: -12px auto 10px; }
+@media (max-width: 760px) {
+  .principle-model { height: 235px; }
+}
+@media print {
+  .model-visual .model-poster { opacity: 1 !important; }
+  .model-canvas { display: none; }
+}
+
+/* Interactive controls are real reading and navigation targets, so they use
+   the same comfortable scale as links elsewhere on the site. */
+.service-disclosure-trigger,
+.service-disclosure-panel a,
+.blueprint-switches button,
+.expand-image,
+.dialog-toolbar button,
+.reading-guide a,
+.brief-segments button,
+.brief-back,
+.brief-summary > button,
+.copy-brief,
+.story-play,
+.story-choice strong,
+.method-stops button,
+.contact-form .brief-options label {
+  font-size: 16px;
+}
+.service-disclosure-trigger,
+.blueprint-switches button,
+.reading-guide a,
+.method-stops button,
+.principle-choices button,
+.contact-form .brief-options label,
+.brief-segments button,
+.brief-back,
+.brief-summary > button,
+.copy-brief,
+.story-play {
+  min-height: 44px;
+}
+.service-disclosure-panel p,
+.method-sticky > p:not(.eyebrow),
+.method-step > p:not(.eyebrow),
+.method-output,
+.story-choice small,
+.story-caption p,
+.principle-copy p,
+.brief-stage-intro,
+.brief-summary > p,
+.brief-summary .brief-excerpt {
+  font-size: 16px;
+}
+.brief-options legend,
+.brief-small-note {
+  font-size: 15px;
+}
+.service-disclosure-panel a {
+  padding-block: 8px 18px;
+}
+
+@media (max-width: 760px) {
+  .service-disclosure-trigger,
+  .service-disclosure-panel a,
+  .blueprint-switches button,
+  .expand-image,
+  .dialog-toolbar button,
+  .reading-guide a,
+  .brief-segments button,
+  .brief-back,
+  .brief-summary > button,
+  .copy-brief,
+  .story-play,
+  .story-choice strong,
+  .method-stops button {
+    font-size: 16px;
+  }
+  .contact-form .brief-options label {
+    font-size: 16px !important;
+  }
+}

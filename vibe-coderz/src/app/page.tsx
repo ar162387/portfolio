@@ -1,4 +1,5 @@
-import { Orbit, WorkGrid } from "@/components/studio/Interactive";
+import { HeroSculpture } from "@/components/studio/ModelVisual";
+import { WorkGrid } from "@/components/studio/Interactive";
 import {
   Button,
   Label,
@@ -81,7 +82,7 @@ export default function Home() {
               </span>
             </div>
           </div>
-          <Orbit />
+          <HeroSculpture />
         </div>
         <div className="hero-bottom">
           <span>STRATEGY MEETS ENGINEERING. POSSIBILITIES FOLLOW.</span>

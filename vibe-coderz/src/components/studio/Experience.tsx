@@ -14,31 +14,8 @@ import {
   X,
 } from "lucide-react";
 
-const motionEvent = "studio-motion-change";
-function motionSnapshot() {
-  try {
-    return (
-      !matchMedia("(prefers-reduced-motion: reduce)").matches &&
-      localStorage.getItem("studio-motion") !== "off"
-    );
-  } catch {
-    return !matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }
-}
-function subscribeMotion(callback: () => void) {
-  const query = matchMedia("(prefers-reduced-motion: reduce)");
-  query.addEventListener("change", callback);
-  window.addEventListener(motionEvent, callback);
-  window.addEventListener("storage", callback);
-  return () => {
-    query.removeEventListener("change", callback);
-    window.removeEventListener(motionEvent, callback);
-    window.removeEventListener("storage", callback);
-  };
-}
-export function useStudioMotion() {
-  return useSyncExternalStore(subscribeMotion, motionSnapshot, () => false);
-}
+import { motionEvent, motionSnapshot, subscribeMotion, useStudioMotion } from "./motion";
+import { ModelVisual } from "./ModelVisual";
 
 /** Enhancement only: the server HTML remains visible without JavaScript. */
 export function StudioExperience() {
@@ -683,25 +660,27 @@ export function StudioPrinciples() {
     },
   ];
   const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [selectionVersion, setSelectionVersion] = useState(0);
   const enabled = useStudioMotion();
+  const principleRoot = useRef<HTMLElement>(null);
+  const [principleVisible, setPrincipleVisible] = useState(false);
   useEffect(() => {
-    if (!enabled || paused) return;
+    const observer = new IntersectionObserver(([entry]) => setPrincipleVisible(entry.isIntersecting));
+    if (principleRoot.current) observer.observe(principleRoot.current);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!enabled || !principleVisible) return;
     const timer = window.setInterval(
-      () => setActive((current) => (current + 1) % principles.length),
+      () => { if (!document.hidden) setActive((current) => (current + 1) % principles.length); },
       1500,
     );
     return () => window.clearInterval(timer);
-  }, [active, enabled, paused, principles.length]);
+  }, [active, enabled, selectionVersion, principles.length, principleVisible]);
   return (
     <section
       className="principle-lab shell"
-      onPointerEnter={() => setPaused(true)}
-      onPointerLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) setPaused(false);
-      }}
+      ref={principleRoot}
     >
       <div>
         <p className="eyebrow">
@@ -719,7 +698,11 @@ export function StudioPrinciples() {
               type="button"
               key={p.word}
               aria-pressed={active === i}
-              onClick={() => setActive(i)}
+              onClick={() => {
+                setActive(i);
+                // Restart the countdown even when reselecting this stage.
+                setSelectionVersion((version) => version + 1);
+              }}
             >
               <span>0{i + 1}</span>
               {p.word}
@@ -733,12 +716,7 @@ export function StudioPrinciples() {
         data-principle={active}
         aria-live="polite"
       >
-        <div className="principle-sculpture" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-          <span>✳</span>
-        </div>
+        <ModelVisual model="principles" stage={active} className="principle-model" />
         <div key={active} className="principle-copy">
           <span className="eyebrow">
             0{active + 1} / {principles[active].word.toUpperCase()}
