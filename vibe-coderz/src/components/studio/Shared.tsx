@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { ServiceAccordion, MethodJourney, MotionControl } from "./Experience";
+import { AutomationColumn } from "./AutomationColumn";
+import { DevelopmentColumn } from "./DevelopmentColumn";
+import { SeoColumn } from "./SeoColumn";
+import { MethodJourney, MotionControl } from "./Experience";
 import { ArrowUpRight } from "lucide-react";
-import { groups, articles, studio } from "@/data/studio";
+import { articles, studio } from "@/data/studio";
 export function Button({
   href,
   children,
@@ -65,44 +68,9 @@ export function ServicesSection() {
         </p>
       </div>
       <div className="service-columns">
-        {groups.map((g) => (
-          <article className="service-column" key={g.code}>
-            <div
-              className={`service-art service-art-${g.code}`}
-              aria-hidden="true"
-            >
-              {g.code === "01" ? (
-                <div className="node-network">
-                  <i />
-                  <i />
-                  <i />
-                  <i />
-                  <i />
-                </div>
-              ) : g.code === "02" ? (
-                <div className="code-art">
-                  <span>⌘</span>
-                  <i />
-                  <i />
-                  <i />
-                </div>
-              ) : (
-                <div className="chart-art">
-                  <i />
-                  <i />
-                  <i />
-                  <i />
-                  <i />
-                  <span>↗</span>
-                </div>
-              )}
-              <span className="art-index">[{g.code}]</span>
-            </div>
-            <h3>{g.name}</h3>
-            <p>{g.caption}</p>
-            <ServiceAccordion items={g.services} />
-          </article>
-        ))}
+        <AutomationColumn />
+        <DevelopmentColumn />
+        <SeoColumn />
       </div>
     </section>
   );

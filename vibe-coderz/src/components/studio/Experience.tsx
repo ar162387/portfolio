@@ -136,8 +136,9 @@ export function MotionControl() {
 }
 
 type ServiceItem = { slug: string; name: string; summary: string };
-export function ServiceAccordion({ items }: { items: ServiceItem[] }) {
+export function ServiceAccordion({ items, onActiveChange }: { items: ServiceItem[]; onActiveChange?: (active: number | null) => void }) {
   const [active, setActive] = useState<number | null>(null);
+  useEffect(() => { onActiveChange?.(active); }, [active, onActiveChange]);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelHover = () => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
