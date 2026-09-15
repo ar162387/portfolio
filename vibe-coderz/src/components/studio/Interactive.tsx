@@ -26,6 +26,7 @@ import {
 import { groups, projects, studio } from "@/data/studio";
 import { usePathname } from "next/navigation";
 import { trackEvent } from "./Analytics";
+import { ThemeControl } from "./ThemeControl";
 
 const serviceIcons: Record<string, LucideIcon> = {
   "ai-automation": Workflow,
@@ -106,17 +107,20 @@ export function Navigation() {
           </span>
           vibecoderzz<span className="brand-dot">✳</span>
         </Link>
-        <button
-          className="mobile-toggle"
-          aria-label={open ? "Close navigation" : "Open navigation"}
-          aria-expanded={open}
-          onClick={() => {
-            setOpen(!open);
-            setServicesOpen(false);
-          }}
-        >
-          {open ? <X /> : <Menu />}
-        </button>
+        <div className="nav-actions">
+          <ThemeControl />
+          <button
+            className="mobile-toggle"
+            aria-label={open ? "Close navigation" : "Open navigation"}
+            aria-expanded={open}
+            onClick={() => {
+              setOpen(!open);
+              setServicesOpen(false);
+            }}
+          >
+            {open ? <X /> : <Menu />}
+          </button>
+        </div>
         <nav
           className={open ? "nav-links is-open" : "nav-links"}
           aria-label="Main navigation"

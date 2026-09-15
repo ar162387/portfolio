@@ -5,7 +5,7 @@ import { Mail, Phone, MapPin } from "lucide-react";
 
 export default function ResumePage() {
   return (
-    <div className="min-h-screen bg-white text-black p-[50px] max-w-[210mm] mx-auto print:max-w-none print:p-0">
+    <div className="resume-page min-h-screen bg-white text-black p-[50px] max-w-[210mm] mx-auto print:max-w-none print:p-0">
       {/* Header */}
       <header className="border-b-2 border-black pb-8 mb-8 flex justify-between items-start">
         <div>

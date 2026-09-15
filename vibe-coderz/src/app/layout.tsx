@@ -31,7 +31,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var root=document.documentElement;var media=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;var saved;try{saved=localStorage.getItem("vibecoderzz-theme")}catch(e){}var choice=saved==="light"||saved==="dark"?saved:"system";root.dataset.themeChoice=choice;function sync(){root.dataset.theme=choice==="system"?(media&&media.matches?"dark":"light"):choice}sync();if(media){var changed=function(){if(root.dataset.themeChoice==="system")sync()};if(media.addEventListener)media.addEventListener("change",changed);else if(media.addListener)media.addListener(changed)}})()`,
+          }}
+        />
+      </head>
       <body>
         <Analytics />
         <a className="skip-link" href="#main">
