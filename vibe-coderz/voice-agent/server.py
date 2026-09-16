@@ -51,8 +51,8 @@ def _turn_credential(ttl_seconds: int, label: str) -> tuple[str, str] | None:
     return username, credential
 
 
-def _turn_server(ttl_seconds: int, label: str) -> IceServer | None:
-    host = os.getenv("TURN_HOST", "").strip()
+def _turn_server(ttl_seconds: int, label: str, host: str | None = None) -> IceServer | None:
+    host = (host or os.getenv("TURN_HOST", "")).strip()
     auth = _turn_credential(ttl_seconds, label)
     if not host or not auth:
         return None
@@ -64,7 +64,14 @@ def _turn_server(ttl_seconds: int, label: str) -> IceServer | None:
     )
 
 
-server_turn = _turn_server(60 * 60 * 24 * 365 * 10, "voice-server")
+# The browser reaches TURN through the public hostname. The EC2 WebRTC peer must
+# reach the same relay on its private interface so its answer includes a public
+# relay candidate instead of an unreachable 172.31.x.x host candidate.
+server_turn = _turn_server(
+    60 * 60 * 24 * 365 * 10,
+    "voice-server",
+    os.getenv("TURN_INTERNAL_HOST", "").strip() or None,
+)
 handler = SmallWebRTCRequestHandler(ice_servers=[server_turn] if server_turn else None)
 sessions: dict[str, asyncio.Task] = {}
 pending = 0

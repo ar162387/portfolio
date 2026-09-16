@@ -52,7 +52,8 @@ settings = {key: value for key, value in values.items() if key in allowed and va
 settings.update({
     "DATABASE_URL": "postgresql+psycopg:///vibecoderzz_voice",
     "TURN_HOST": "dev.vibecoderzz.com",
-    "MAX_VOICE_SESSIONS": "1",
+    "TURN_INTERNAL_HOST": "127.0.0.1",
+    "MAX_VOICE_SESSIONS": "2",
     "PIPECAT_SCTP_MAX_CHUNK_SIZE": "1100",
 })
 
