@@ -210,7 +210,10 @@ export function VoiceAssistant({ email }: { email: string }) {
       ]);
       if (!isCurrent()) return;
       const pc = new PipecatClient({
-        transport: new SmallWebRTCTransport({ iceServers: voiceConfig.iceServers || [] }),
+        // Include the TURN relay candidate in the initial offer. The hosted
+        // backend can then connect even when a visitor's direct candidate is
+        // unreachable, without relying on a later trickle-ICE PATCH.
+        transport: new SmallWebRTCTransport({ iceServers: voiceConfig.iceServers || [], waitForICEGathering: true }),
         enableMic: startMode !== "text", enableCam: false,
         callbacks: {
           onBotReady: () => {
