@@ -1,0 +1,58 @@
+[Unit]
+Description=Vibecoderzz Pipecat voice agent and lead dashboard API
+After=network-online.target postgresql.service coturn.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=vibecoderzz
+Group=vibecoderzz
+WorkingDirectory=/opt/vibecoderzz/portfolio/vibe-coderz/voice-agent
+EnvironmentFile=/etc/vibecoderzz/voice-agent.env
+ExecStart=/opt/vibecoderzz/portfolio/vibe-coderz/voice-agent/.venv/bin/uvicorn \
+    server:app \
+    --host 127.0.0.1 \
+    --port 7860 \
+    --proxy-headers \
+    --forwarded-allow-ips 127.0.0.1 \
+    --log-level warning \
+    --timeout-graceful-shutdown 25
+
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=35
+
+# Nimbess's receiver is the critical workload on this shared host. If memory is
+# exhausted, discard the voice session before the product API or receiver.
+OOMScoreAdjust=800
+MemoryHigh=600M
+MemoryMax=768M
+TasksMax=160
+LimitNOFILE=4096
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+ReadOnlyPaths=/opt/vibecoderzz
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vibecoderzz-voice
+
+[Install]
+WantedBy=multi-user.target

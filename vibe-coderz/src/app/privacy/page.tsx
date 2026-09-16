@@ -18,10 +18,15 @@ export default function Privacy() {
           <p>Our project brief opens a draft in your own email application. The website does not submit that brief to our servers. If you send an email, we use the information you provide to reply to your enquiry.</p>
         </section>
         <section>
+          <h2>Optional AI voice assistant</h2>
+          <p>When you start a conversation, typed messages and any microphone audio you enable pass through our Pipecat service to Google Gemini, which generates spoken replies and transcripts. We save the text transcript, lead qualification, conversation progress, and confirmed contact or booking details in our private business database so the studio can review and follow up on enquiries. We do not save raw microphone audio or send transcripts to analytics.</p>
+          <p>Google processes the conversation under its Gemini API terms. Its free tier may use submitted content and responses to improve its products. Avoid sharing sensitive information. You can mute your microphone or end the conversation at any time. If you ask the assistant to book a consultation, the name, email address, optional phone number, timezone, and appointment details you explicitly confirm are sent to Cal.com to check availability and create the booking. Cal.com then retains the booking under its service terms. Email remains available if you prefer to speak with a person.</p>
+        </section>
+        <section>
           <h2>Your choices</h2>
           <p>You can control or delete cookies through your browser settings. For questions about this policy or your information, email {" "}<a href="mailto:Vibe.coderz83@gmail.com">Vibe.coderz83@gmail.com</a>.</p>
         </section>
-        <p className="privacy-updated">Last updated: 10 September 2026.</p>
+        <p className="privacy-updated">Last updated: 14 September 2026.</p>
       </article>
     </>
   );

@@ -32,6 +32,15 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+!voice-agent/.env.example
+
+# Python voice service
+**/__pycache__/
+**/.venv/
+**/.pytest_cache/
+voice-agent/voice_agent.db
+voice-agent/voice_agent.db-*
 
 # vercel
 .vercel

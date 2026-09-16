@@ -17,6 +17,18 @@ npm run build
 npm run start
 ```
 
+## Voice assistant prototype
+
+The optional **Talk to the studio** widget uses Pipecat and Gemini Live for voice
+conversation, typed messages and speech highlighting, grounded in published service descriptions.
+See [voice-agent/README.md](voice-agent/README.md) for private credentials, local
+startup, tests, session limits and hosting requirements. Set `VOICE_AGENT_URL` to
+enable it. With Cal.com configured, it can offer real availability and create a
+confirmed consultation after the visitor approves the slot and contact details.
+The private `/studio-admin` dashboard shows stored text transcripts, qualified leads,
+conversion progress and bookings. Its FastAPI database layer uses SQLite locally and
+PostgreSQL on the planned AWS EC2 backend; the Vercel site only renders and proxies it.
+
 ## Content and structure
 
 - `src/data/studio.ts`: service taxonomy, offer details, project corrections, studio notes, and site URL.
