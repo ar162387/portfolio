@@ -40,7 +40,10 @@ cat >/etc/turnserver.conf <<EOF
 listening-port=3478
 listening-ip=0.0.0.0
 relay-ip=$private_ip
-external-ip=47.131.218.85/$private_ip
+# Advertise the elastic public address for every TURN allocation. The EC2
+# voice worker itself is also an ICE client, so a private-address mapping
+# would otherwise leak an unreachable 172.31.x.x relay candidate into its SDP.
+external-ip=47.131.218.85
 min-port=49160
 max-port=49200
 realm=dev.vibecoderzz.com
