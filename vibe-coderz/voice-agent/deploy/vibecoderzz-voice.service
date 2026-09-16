@@ -45,7 +45,10 @@ RestrictRealtime=true
 RestrictNamespaces=true
 LockPersonality=true
 MemoryDenyWriteExecute=false
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# aiortc queries interface addresses through Linux rtnetlink while gathering
+# WebRTC candidates. Keep the public network surface restricted while allowing
+# that read-only kernel interface query.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
 SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM
 ReadOnlyPaths=/opt/vibecoderzz
