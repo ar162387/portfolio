@@ -141,11 +141,8 @@ async def serve_session(connection, body):
                 start_conversation, transport_id=connection.pc_id, channel=body.channel
             )
         history = await asyncio.to_thread(conversation_messages, conversation_id)
-        completed_history = [
-            item for item in history if item.get("delivery_state") == "completed"
-        ]
         greet = await asyncio.to_thread(
-            claim_greeting, conversation_id, body.greet or not completed_history
+            claim_greeting, conversation_id, body.greet
         )
         # A recovery restores context and waits for fresh speech. The prior
         # last-user heuristic could regenerate an answer that had already played

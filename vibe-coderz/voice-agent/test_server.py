@@ -174,6 +174,22 @@ def test_voice_recovery_without_saved_turns_does_not_replay_greeting(monkeypatch
     assert bot.await_args.kwargs["resume"] is False
 
 
+def test_first_typed_turn_does_not_trigger_opening_greeting(monkeypatch):
+    connection = Mock(pc_id="first-text", disconnect=AsyncMock(), is_connected=Mock(return_value=True))
+    bot = AsyncMock()
+    claim = Mock(return_value=False)
+    monkeypatch.setattr(server, "start_conversation", Mock(return_value="conversation"))
+    monkeypatch.setattr(server, "conversation_messages", Mock(return_value=[]))
+    monkeypatch.setattr(server, "claim_greeting", claim)
+    monkeypatch.setattr(server, "run_bot", bot)
+    offer = server.Offer(**{**OFFER, "channel": "text", "greet": False})
+
+    asyncio.run(server.serve_session(connection, offer))
+
+    claim.assert_called_once_with("conversation", False)
+    assert bot.await_args.kwargs["greet"] is False
+
+
 def test_replacement_voice_session_cancels_previous_before_start(monkeypatch):
     stopped = asyncio.Event()
 
