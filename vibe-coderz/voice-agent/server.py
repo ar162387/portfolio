@@ -4,7 +4,9 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import json
 import os
+import secrets
 import sys
 import time
 from collections import deque
@@ -13,7 +15,9 @@ from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
+import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -21,10 +25,30 @@ load_dotenv(Path(__file__).with_name(".env"))
 # Pipecat debug logs may contain transcripts. Keep normal operation quiet.
 logger.remove()
 logger.add(sys.stderr, level="WARNING", filter=lambda record: record["level"].name == "WARNING")
+# Preserve failure locations without logging provider payloads or transcripts.
+def error_location_only(record):
+    record["exception"] = None
+    return True
 
-from bot import run_bot  # noqa: E402
+
+logger.add(sys.stderr, level="ERROR", filter=error_location_only,
+           format="{time} | {level} | {name}:{function}:{line} | Voice pipeline error",
+           backtrace=False, diagnose=False)
+logger.add(
+    sys.stdout,
+    level="INFO",
+    filter=lambda record: record["extra"].get("diagnostic") is True,
+    serialize=True,
+)
+
+from bot import _env_seconds, run_bot  # noqa: E402
 from dashboard_store import (  # noqa: E402
+    add_message,
+    attach_transport,
     authenticated_user,
+    claim_greeting,
+    conversation_exists,
+    conversation_messages,
     end_conversation,
     get_conversation,
     initialize,
@@ -33,7 +57,9 @@ from dashboard_store import (  # noqa: E402
     logout,
     metrics,
     start_conversation,
+    update_message_delivery,
 )
+from text_agent import reply as text_reply, reply_stream as text_reply_stream  # noqa: E402
 from pipecat.transports.smallwebrtc.request_handler import (  # noqa: E402
     IceCandidate, SmallWebRTCPatchRequest, SmallWebRTCRequest, SmallWebRTCRequestHandler,
 )
@@ -74,9 +100,71 @@ server_turn = _turn_server(
 )
 handler = SmallWebRTCRequestHandler(ice_servers=[server_turn] if server_turn else None)
 sessions: dict[str, asyncio.Task] = {}
+conversation_locks: dict[str, asyncio.Lock] = {}
 pending = 0
 starts: deque[float] = deque()
 lock = asyncio.Lock()
+
+
+async def watch_connection(connection):
+    """Bound abandoned handshakes and lost browsers independently of the UI."""
+    started = time.monotonic()
+    last_connected = None
+    while True:
+        now = time.monotonic()
+        if connection.is_connected():
+            last_connected = now
+        if now - started >= _env_seconds("MAX_SESSION_SECONDS", 300, 30):
+            return
+        if last_connected is None:
+            if now - started >= _env_seconds("CONNECT_TIMEOUT_SECONDS", 20, 5):
+                return
+        elif now - last_connected >= _env_seconds("DISCONNECT_TIMEOUT_SECONDS", 15, 5):
+            return
+        await asyncio.sleep(1)
+
+
+async def serve_session(connection, body):
+    conversation_id = None
+    children = []
+    try:
+        if body.conversation_id and _verify_session_token(body.conversation_id, body.session_token):
+            attached = await asyncio.to_thread(
+                attach_transport, body.conversation_id, connection.pc_id, body.channel
+            )
+            if not attached:
+                raise RuntimeError("Conversation is unavailable")
+            conversation_id = body.conversation_id
+        else:
+            conversation_id = await asyncio.to_thread(
+                start_conversation, transport_id=connection.pc_id, channel=body.channel
+            )
+        greet = await asyncio.to_thread(claim_greeting, conversation_id, body.greet)
+        worker = asyncio.create_task(run_bot(
+            connection, body.studio_knowledge.model_dump(), greet=greet,
+            conversation_id=conversation_id,
+        ))
+        watcher = asyncio.create_task(watch_connection(connection))
+        children = [worker, watcher]
+        done, _ = await asyncio.wait(children, return_when=asyncio.FIRST_COMPLETED)
+        for task in done:
+            task.result()
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        # Provider/database exception text can contain private conversation data.
+        logger.warning("Voice session failed; check model access and configuration.")
+    finally:
+        for task in children:
+            task.cancel()
+        try:
+            await asyncio.gather(*children, return_exceptions=True)
+            await connection.disconnect()
+        finally:
+            # Recording failures must never leave the capacity slot occupied.
+            sessions.pop(connection.pc_id, None)
+            # A browser can continue this same conversation over the independent
+            # HTTP text path after voice transport loss.
 
 
 async def authenticate(authorization: str = Header(default="")):
@@ -92,8 +180,14 @@ def require_key():
 
 @asynccontextmanager
 async def lifespan(_app):
+    if os.getenv("NLTK_DATA"):
+        from nltk.tokenize import sent_tokenize
+        await asyncio.to_thread(sent_tokenize, "Voice startup check.")
     await asyncio.to_thread(initialize)
+    turn_refresh = asyncio.create_task(_refresh_server_turn_forever())
     yield
+    turn_refresh.cancel()
+    await asyncio.gather(turn_refresh, return_exceptions=True)
     tasks = list(sessions.values())
     for task in tasks:
         task.cancel()
@@ -123,6 +217,8 @@ class Offer(BaseModel):
     restart_pc: bool = False
     greet: bool = True
     channel: Literal["voice", "push_to_talk", "text"] = "voice"
+    conversation_id: str | None = Field(default=None, max_length=36)
+    session_token: str = Field(default="", max_length=500)
     studio_knowledge: Knowledge
 
 
@@ -135,6 +231,112 @@ class Candidate(BaseModel):
 class Patch(BaseModel):
     pc_id: str = Field(max_length=100)
     candidates: list[Candidate] = Field(max_length=30)
+
+
+class SessionStart(BaseModel):
+    channel: Literal["voice", "push_to_talk", "text"] = "voice"
+
+
+class SessionEnd(BaseModel):
+    conversation_id: str = Field(max_length=36)
+    session_token: str = Field(max_length=500)
+    reason: str = Field(default="client_ended", max_length=80)
+
+
+class ConnectionDiagnostic(BaseModel):
+    conversation_id: str = Field(max_length=36)
+    session_token: str = Field(max_length=500)
+    event: Literal["connected", "degraded", "disconnected", "recovered"]
+    connection_state: str = Field(default="unknown", max_length=30)
+    ice_transport: Literal["udp", "tcp", "tls", "unknown"] = "unknown"
+    local_candidate_type: str = Field(default="unknown", max_length=20)
+    remote_candidate_type: str = Field(default="unknown", max_length=20)
+    round_trip_ms: float | None = Field(default=None, ge=0, le=120_000)
+    packets_lost: int | None = Field(default=None, ge=0, le=2_147_483_647)
+    jitter_ms: float | None = Field(default=None, ge=0, le=120_000)
+
+
+class TextMessage(BaseModel):
+    conversation_id: str = Field(max_length=36)
+    session_token: str = Field(max_length=500)
+    message_id: str = Field(min_length=8, max_length=80)
+    text: str = Field(min_length=1, max_length=2000)
+    studio_knowledge: Knowledge
+
+
+def _session_token(conversation_id: str, ttl_seconds: int = 60 * 60) -> str:
+    expires = int(time.time()) + ttl_seconds
+    nonce = secrets.token_urlsafe(12)
+    payload = f"{conversation_id}.{expires}.{nonce}"
+    signature = hmac.new(
+        os.environ["VOICE_AGENT_TOKEN"].encode(), payload.encode(), hashlib.sha256
+    ).hexdigest()
+    return f"{payload}.{signature}"
+
+
+def _verify_session_token(conversation_id: str, token: str) -> bool:
+    try:
+        token_conversation, raw_expiry, nonce, signature = token.split(".", 3)
+        payload = f"{token_conversation}.{raw_expiry}.{nonce}"
+        expected = hmac.new(
+            os.environ["VOICE_AGENT_TOKEN"].encode(), payload.encode(), hashlib.sha256
+        ).hexdigest()
+        return (
+            token_conversation == conversation_id
+            and int(raw_expiry) >= int(time.time())
+            and hmac.compare_digest(signature, expected)
+        )
+    except (KeyError, ValueError):
+        return False
+
+
+async def _cloudflare_ice() -> list[dict]:
+    if os.getenv("MANAGED_TURN_ENABLED", "false").lower() not in {"1", "true", "yes"}:
+        return []
+    key_id = os.getenv("CLOUDFLARE_TURN_KEY_ID", "").strip()
+    api_token = os.getenv("CLOUDFLARE_TURN_API_TOKEN", "").strip()
+    if not key_id or not api_token:
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=4) as client:
+            response = await client.post(
+                f"https://rtc.live.cloudflare.com/v1/turn/keys/{key_id}/credentials/generate-ice-servers",
+                headers={"Authorization": f"Bearer {api_token}"},
+                json={"ttl": 3600},
+            )
+            response.raise_for_status()
+            servers = response.json().get("iceServers", [])
+            return servers if isinstance(servers, list) else []
+    except (httpx.HTTPError, ValueError, AttributeError):
+        logger.warning("Managed TURN credentials unavailable; using self-hosted fallback.")
+        return []
+
+
+async def _browser_ice_servers() -> list[dict]:
+    managed = await _cloudflare_ice()
+    if managed:
+        return managed
+    turn = _turn_server(60 * 60, "website")
+    if not turn:
+        return []
+    return [{"urls": turn.urls, "username": turn.username, "credential": turn.credential}]
+
+
+async def _refresh_server_turn_forever():
+    """Keep the EC2 peer on the same managed relay set as browsers."""
+    while True:
+        servers = await _cloudflare_ice()
+        managed = [
+            IceServer(
+                urls=item.get("urls", []),
+                username=item.get("username"),
+                credential=item.get("credential"),
+            )
+            for item in servers
+            if isinstance(item, dict) and item.get("urls")
+        ]
+        handler.update_ice_servers(managed or ([server_turn] if server_turn else None))
+        await asyncio.sleep(45 * 60)
 
 
 class DashboardLogin(BaseModel):
@@ -151,25 +353,210 @@ def dashboard_token(x_dashboard_session: str = Header(default="")) -> str:
 @app.get("/health", dependencies=[Depends(authenticate)])
 async def health():
     require_key()
-    return {"available": True}
+    return {"available": True, "sessions": len(sessions), "pending": pending}
 
 
 @app.get("/ice", dependencies=[Depends(authenticate)])
 async def ice_configuration():
-    turn = _turn_server(60 * 60, "website")
-    if not turn:
-        return {"ice_servers": []}
-    return {"ice_servers": [{
-        "urls": turn.urls,
-        "username": turn.username,
-        "credential": turn.credential,
-    }]}
+    return {"ice_servers": await _browser_ice_servers()}
+
+
+@app.post("/session", dependencies=[Depends(authenticate)])
+async def create_session(body: SessionStart):
+    require_key()
+    conversation_id = await asyncio.to_thread(
+        start_conversation, transport_id=None, channel=body.channel
+    )
+    return {
+        "conversation_id": conversation_id,
+        "session_token": _session_token(conversation_id),
+        "ice_servers": await _browser_ice_servers(),
+    }
+
+
+@app.post("/session/end", dependencies=[Depends(authenticate)])
+async def close_session(body: SessionEnd):
+    if not _verify_session_token(body.conversation_id, body.session_token):
+        raise HTTPException(401, "Invalid session")
+    await asyncio.to_thread(end_conversation, body.conversation_id, body.reason)
+    conversation_locks.pop(body.conversation_id, None)
+    return {"ok": True}
+
+
+@app.post("/diagnostic", dependencies=[Depends(authenticate)])
+async def record_connection_diagnostic(body: ConnectionDiagnostic):
+    if not _verify_session_token(body.conversation_id, body.session_token):
+        raise HTTPException(401, "Invalid session")
+    logger.bind(
+        diagnostic=True,
+        conversation_id=body.conversation_id,
+        event=body.event,
+        connection_state=body.connection_state,
+        ice_transport=body.ice_transport,
+        local_candidate_type=body.local_candidate_type,
+        remote_candidate_type=body.remote_candidate_type,
+        round_trip_ms=body.round_trip_ms,
+        packets_lost=body.packets_lost,
+        jitter_ms=body.jitter_ms,
+    ).info("voice_connection")
+    return {"ok": True}
+
+
+@app.post("/message", dependencies=[Depends(authenticate)])
+async def send_text_message(body: TextMessage):
+    require_key()
+    if os.getenv("TEXT_FALLBACK_ENABLED", "true").lower() not in {"1", "true", "yes"}:
+        raise HTTPException(503, "Text fallback is disabled")
+    if not _verify_session_token(body.conversation_id, body.session_token):
+        raise HTTPException(401, "Invalid session")
+    if not await asyncio.to_thread(conversation_exists, body.conversation_id):
+        raise HTTPException(404, "Conversation not found")
+    lock = conversation_locks.setdefault(body.conversation_id, asyncio.Lock())
+    async with lock:
+        response_id = f"{body.message_id}:assistant"
+        existing = await asyncio.to_thread(conversation_messages, body.conversation_id)
+        for item in existing:
+            if item.get("message_id") == response_id:
+                return {"message_id": response_id, "text": item["text"], "duplicate": True}
+        prior = [item for item in existing if item.get("message_id") != body.message_id]
+        inserted = await asyncio.to_thread(
+            add_message,
+            body.conversation_id,
+            "user",
+            body.text,
+            None,
+            message_id=body.message_id,
+            delivery_state="processing",
+        )
+        if not inserted:
+            prior = [item for item in existing if item.get("message_id") != body.message_id]
+        try:
+            answer = await asyncio.wait_for(
+                text_reply(
+                    body.conversation_id,
+                    body.studio_knowledge.model_dump(),
+                    prior,
+                    body.text,
+                ),
+                timeout=25,
+            )
+        except TimeoutError as exc:
+            await asyncio.to_thread(
+                update_message_delivery, body.conversation_id, body.message_id, "failed"
+            )
+            raise HTTPException(504, "Assistant response timed out") from exc
+        except Exception as exc:
+            await asyncio.to_thread(
+                update_message_delivery, body.conversation_id, body.message_id, "failed"
+            )
+            logger.warning("Text fallback failed; provider details suppressed.")
+            raise HTTPException(503, "Assistant response unavailable") from exc
+        await asyncio.to_thread(
+            update_message_delivery, body.conversation_id, body.message_id, "completed"
+        )
+        await asyncio.to_thread(
+            add_message,
+            body.conversation_id,
+            "assistant",
+            answer,
+            None,
+            message_id=response_id,
+            delivery_state="completed",
+        )
+        return {"message_id": response_id, "text": answer, "duplicate": False}
+
+
+@app.post("/message/stream", dependencies=[Depends(authenticate)])
+async def stream_text_message(body: TextMessage):
+    require_key()
+    if os.getenv("TEXT_FALLBACK_ENABLED", "true").lower() not in {"1", "true", "yes"}:
+        raise HTTPException(503, "Text fallback is disabled")
+    if not _verify_session_token(body.conversation_id, body.session_token):
+        raise HTTPException(401, "Invalid session")
+    if not await asyncio.to_thread(conversation_exists, body.conversation_id):
+        raise HTTPException(404, "Conversation not found")
+
+    async def events():
+        lock = conversation_locks.setdefault(body.conversation_id, asyncio.Lock())
+        async with lock:
+            response_id = f"{body.message_id}:assistant"
+            existing = await asyncio.to_thread(conversation_messages, body.conversation_id)
+            for item in existing:
+                if item.get("message_id") == response_id and item.get("delivery_state") == "completed":
+                    yield json.dumps({
+                        "type": "delta", "text": item["text"], "message_id": response_id,
+                    }) + "\n"
+                    yield json.dumps({"type": "done", "message_id": response_id, "duplicate": True}) + "\n"
+                    return
+            prior = [item for item in existing if item.get("message_id") != body.message_id]
+            await asyncio.to_thread(
+                add_message,
+                body.conversation_id,
+                "user",
+                body.text,
+                None,
+                message_id=body.message_id,
+                delivery_state="processing",
+            )
+            parts: list[str] = []
+            try:
+                async with asyncio.timeout(25):
+                    async for part in text_reply_stream(
+                        body.conversation_id,
+                        body.studio_knowledge.model_dump(),
+                        prior,
+                        body.text,
+                    ):
+                        parts.append(part)
+                        yield json.dumps({"type": "delta", "text": part, "message_id": response_id}) + "\n"
+                answer = "".join(parts).strip()
+                if not answer:
+                    raise RuntimeError("Text model returned no response")
+                await asyncio.to_thread(
+                    add_message,
+                    body.conversation_id,
+                    "assistant",
+                    answer,
+                    None,
+                    message_id=response_id,
+                    delivery_state="completed",
+                )
+                await asyncio.to_thread(
+                    update_message_delivery, body.conversation_id, body.message_id, "completed"
+                )
+                yield json.dumps({"type": "done", "message_id": response_id, "duplicate": False}) + "\n"
+            except asyncio.CancelledError:
+                if parts:
+                    await asyncio.to_thread(
+                        add_message,
+                        body.conversation_id,
+                        "assistant",
+                        "".join(parts),
+                        None,
+                        message_id=response_id,
+                        delivery_state="interrupted",
+                        interrupted=True,
+                    )
+                await asyncio.to_thread(
+                    update_message_delivery, body.conversation_id, body.message_id, "interrupted",
+                    interrupted=True,
+                )
+                raise
+            except Exception:
+                await asyncio.to_thread(
+                    update_message_delivery, body.conversation_id, body.message_id, "failed"
+                )
+                yield json.dumps({"type": "error", "message": "Assistant response unavailable"}) + "\n"
+
+    return StreamingResponse(events(), media_type="application/x-ndjson")
 
 
 @app.post("/api/offer", dependencies=[Depends(authenticate)])
 async def offer(body: Offer):
     global pending
     require_key()
+    if body.conversation_id and not _verify_session_token(body.conversation_id, body.session_token):
+        raise HTTPException(401, "Invalid session")
     is_new = not body.pc_id
     async with lock:
         if body.pc_id and body.pc_id not in sessions:
@@ -178,33 +565,18 @@ async def offer(body: Offer):
             now = time.monotonic()
             while starts and starts[0] < now - 60:
                 starts.popleft()
-            if len(sessions) + pending >= int(os.getenv("MAX_VOICE_SESSIONS", "2")) or len(starts) >= 10:
-                raise HTTPException(429, "Assistant is busy")
+            if len(sessions) + pending >= int(os.getenv("MAX_VOICE_SESSIONS", "2")):
+                raise HTTPException(429, "Assistant is busy", headers={"Retry-After": "15"})
+            if len(starts) >= 10:
+                raise HTTPException(429, "Too many connection attempts", headers={"Retry-After": "60"})
             starts.append(now)
             pending += 1
 
     async def connected(connection):
-        async def serve():
-            conversation_id = await asyncio.to_thread(
-                start_conversation, transport_id=connection.pc_id, channel=body.channel
-            )
-            try:
-                await run_bot(
-                    connection,
-                    body.studio_knowledge.model_dump(),
-                    greet=body.greet,
-                    conversation_id=conversation_id,
-                )
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                # No provider exception text: it can contain conversation data.
-                logger.warning("Voice session failed; check model access and configuration.")
-            finally:
-                await asyncio.to_thread(end_conversation, conversation_id)
-                sessions.pop(connection.pc_id, None)
-                await connection.disconnect()
-        sessions[connection.pc_id] = asyncio.create_task(serve())
+        task = asyncio.create_task(serve_session(connection, body))
+        sessions[connection.pc_id] = task
+        # Also release tasks cancelled before their coroutine first runs.
+        task.add_done_callback(lambda _: sessions.pop(connection.pc_id, None))
 
     try:
         return await handler.handle_web_request(

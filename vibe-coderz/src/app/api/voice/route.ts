@@ -36,6 +36,8 @@ async function forward(request: NextRequest) {
       body = JSON.stringify(request.method === "POST" ? {
         sdp: payload.sdp, type: payload.type, pc_id: payload.pc_id, restart_pc: payload.restart_pc,
         greet: payload.requestData?.greet !== false,
+        conversation_id: payload.requestData?.conversation_id,
+        session_token: payload.requestData?.session_token,
         channel: ["voice", "push_to_talk", "text"].includes(payload.requestData?.channel)
           ? payload.requestData.channel : "voice",
         studio_knowledge: {

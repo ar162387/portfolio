@@ -5,11 +5,13 @@ import { ArrowUpRight, Keyboard, Mic, MicOff, PhoneOff, Send, Volume2, VolumeX, 
 import type { PipecatClient } from "@pipecat-ai/client-js";
 import styles from "./voice-assistant.module.css";
 
-type Status = "idle" | "connecting" | "listening" | "speaking" | "ended" | "error";
+type Status = "idle" | "connecting" | "listening" | "processing" | "responding" | "recovering" | "speaking" | "ended" | "error";
 type Mode = "talk" | "hold" | "text";
 type Message = { id: number; role: "user" | "assistant"; text: string; spoken: number; time: string };
 const labels: Record<Status, string> = {
   idle: "A conversation starts here", connecting: "Connecting…", listening: "Listening to you",
+  processing: "Working on your reply…", recovering: "Restoring the conversation…",
+  responding: "Writing your reply…",
   speaking: "Your assistant is speaking", ended: "Conversation ended", error: "Let’s try that again",
 };
 const VOICE_IDLE_MS = 60_000;
@@ -26,6 +28,38 @@ function isSuccessfulBookingResult(value: unknown): boolean {
   return "result" in result && isSuccessfulBookingResult(result.result);
 }
 
+type StatsTransport = { peerConnection: () => RTCPeerConnection | undefined };
+
+async function collectConnectionStats(transport: StatsTransport) {
+  const pc = transport.peerConnection();
+  if (!pc) return null;
+  const reports = await pc.getStats();
+  let pair: RTCStats | undefined;
+  let packetsLost = 0;
+  let jitterMs = 0;
+  reports.forEach((report) => {
+    const item = report as RTCStats & Record<string, unknown>;
+    if (item.type === "candidate-pair" && item.state === "succeeded" && (item.nominated || !pair)) pair = item;
+    if (item.type === "inbound-rtp" && item.kind === "audio") {
+      packetsLost += typeof item.packetsLost === "number" ? item.packetsLost : 0;
+      jitterMs = Math.max(jitterMs, typeof item.jitter === "number" ? item.jitter * 1000 : 0);
+    }
+  });
+  const selected = pair as (RTCStats & Record<string, unknown>) | undefined;
+  const local = selected?.localCandidateId ? reports.get(String(selected.localCandidateId)) as RTCStats & Record<string, unknown> : undefined;
+  const remote = selected?.remoteCandidateId ? reports.get(String(selected.remoteCandidateId)) as RTCStats & Record<string, unknown> : undefined;
+  const protocol = String(local?.relayProtocol || local?.protocol || "unknown").toLowerCase();
+  return {
+    connectionState: pc.connectionState,
+    iceTransport: ["udp", "tcp", "tls"].includes(protocol) ? protocol : "unknown",
+    localCandidateType: String(local?.candidateType || "unknown"),
+    remoteCandidateType: String(remote?.candidateType || "unknown"),
+    roundTripMs: typeof selected?.currentRoundTripTime === "number" ? selected.currentRoundTripTime * 1000 : null,
+    packetsLost,
+    jitterMs,
+  };
+}
+
 export function VoiceAssistant({ email }: { email: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
@@ -40,7 +74,14 @@ export function VoiceAssistant({ email }: { email: string }) {
   const modeRef = useRef<Mode>("talk");
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionWarningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shutdownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const delayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recoveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const conversationId = useRef("");
+  const sessionToken = useRef("");
+  const sessionIceServers = useRef<RTCIceServer[]>([]);
+  const pendingTextMessage = useRef<{ id: string; text: string; assistantId: number } | null>(null);
   const autoClosing = useRef(false);
   const farewellPlayed = useRef(false);
   const bookingComplete = useRef(false);
@@ -59,16 +100,29 @@ export function VoiceAssistant({ email }: { email: string }) {
   const [needsPlayback, setNeedsPlayback] = useState(false);
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [selectedMic, setSelectedMic] = useState("");
-  const active = status === "listening" || status === "speaking";
+  const active = ["listening", "speaking", "processing", "responding", "recovering"].includes(status);
 
   function clearVoiceTimers() {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     if (sessionTimer.current) clearTimeout(sessionTimer.current);
+    if (sessionWarningTimer.current) clearTimeout(sessionWarningTimer.current);
     if (shutdownTimer.current) clearTimeout(shutdownTimer.current);
-    idleTimer.current = null; sessionTimer.current = null; shutdownTimer.current = null;
+    if (delayTimer.current) clearTimeout(delayTimer.current);
+    if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
+    idleTimer.current = null; sessionTimer.current = null; sessionWarningTimer.current = null; shutdownTimer.current = null;
+    delayTimer.current = null; recoveryTimer.current = null;
   }
 
-  async function requestFarewell() {
+  function clearResponseTimers() {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    if (shutdownTimer.current) clearTimeout(shutdownTimer.current);
+    if (delayTimer.current) clearTimeout(delayTimer.current);
+    if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
+    idleTimer.current = null; shutdownTimer.current = null;
+    delayTimer.current = null; recoveryTimer.current = null;
+  }
+
+  async function requestFarewell(reason: "inactivity_timeout" | "session_limit" = "inactivity_timeout") {
     if (autoClosing.current || farewellPlayed.current) return;
     autoClosing.current = true;
     farewellPlayed.current = true;
@@ -81,15 +135,15 @@ export function VoiceAssistant({ email }: { email: string }) {
       spoken: FAREWELL_TEXT.length,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     }]);
-    shutdownTimer.current = setTimeout(() => { void end(); }, 12_000);
+    shutdownTimer.current = setTimeout(() => { void end(reason); }, 12_000);
     const farewellAudio = audio.current;
-    if (!farewellAudio) { await end(); return; }
+    if (!farewellAudio) { await end(reason); return; }
     farewellAudio.srcObject = null;
     farewellAudio.src = "/audio/session-farewell.wav";
     farewellAudio.currentTime = 0;
     const finish = () => {
       farewellAudio.onended = null; farewellAudio.onerror = null;
-      void end();
+      void end(reason);
     };
     farewellAudio.onended = finish; farewellAudio.onerror = finish;
     try {
@@ -102,7 +156,7 @@ export function VoiceAssistant({ email }: { email: string }) {
   function armIdleTimer() {
     if (autoClosing.current) return;
     if (idleTimer.current) clearTimeout(idleTimer.current);
-    idleTimer.current = setTimeout(() => { void requestFarewell(); }, VOICE_IDLE_MS);
+    idleTimer.current = setTimeout(() => { void requestFarewell("inactivity_timeout"); }, VOICE_IDLE_MS);
   }
 
   function mic(enabled: boolean) {
@@ -113,8 +167,9 @@ export function VoiceAssistant({ email }: { email: string }) {
     setMuted(!enabled);
   }
 
-  async function release() {
-    clearVoiceTimers(); autoClosing.current = false;
+  async function release(preserveSession = false) {
+    if (preserveSession) clearResponseTimers(); else clearVoiceTimers();
+    autoClosing.current = false;
     bookingComplete.current = false; bookingConfirmationStarted.current = false;
     generation.current += 1;
     wantedMic.current = false;
@@ -134,9 +189,20 @@ export function VoiceAssistant({ email }: { email: string }) {
     await closing.current;
   }
 
-  async function end() {
+  async function end(reason = "client_ended") {
     setStatus("ended"); setInterim(""); setSpeechPending(null); setHolding(false); setMuted(false); setNeedsPlayback(false);
+    if (conversationId.current && sessionToken.current) {
+      void fetch("/api/voice/session/end", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: conversationId.current, sessionToken: sessionToken.current, reason,
+        }), keepalive: true,
+      }).catch(() => {});
+    }
     await release();
+    conversationId.current = ""; sessionToken.current = "";
+    sessionIceServers.current = [];
+    pendingTextMessage.current = null;
   }
 
   useEffect(() => {
@@ -180,52 +246,157 @@ export function VoiceAssistant({ email }: { email: string }) {
     });
   }
 
-  async function send(pc: PipecatClient, text: string) {
-    await pc.sendText(text, { run_immediately: true, audio_response: true });
-    appendUser(text);
+  async function createSession(channel: "voice" | "push_to_talk" | "text") {
+    if (conversationId.current && sessionToken.current) {
+      return { iceServers: sessionIceServers.current };
+    }
+    const response = await fetch("/api/voice/session", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel }), signal: AbortSignal.timeout(8000), cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Session unavailable");
+    const payload = await response.json() as {
+      conversationId: string; sessionToken: string; iceServers?: RTCIceServer[];
+    };
+    conversationId.current = payload.conversationId;
+    sessionToken.current = payload.sessionToken;
+    sessionIceServers.current = payload.iceServers || [];
+    sessionWarningTimer.current = setTimeout(() => {
+      setError("This conversation will end in 30 seconds. You can start a new one afterward.");
+    }, VOICE_SESSION_MS - 30_000);
+    sessionTimer.current = setTimeout(() => { void requestFarewell("session_limit"); }, VOICE_SESSION_MS);
+    return { iceServers: sessionIceServers.current };
+  }
+
+  async function reportConnection(event: "connected" | "degraded" | "disconnected" | "recovered", transport: StatsTransport) {
+    if (!conversationId.current || !sessionToken.current) return;
+    const stats = await collectConnectionStats(transport).catch(() => null);
+    void fetch("/api/voice/diagnostic", {
+      method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
+      body: JSON.stringify({
+        conversationId: conversationId.current, sessionToken: sessionToken.current, event,
+        ...(stats || {}),
+      }),
+    }).catch(() => {});
+  }
+
+  async function sendText(text: string) {
+    clearResponseTimers();
+    await createSession("text");
+    const pending = pendingTextMessage.current;
+    const isRetry = pending?.text === text;
+    const id = pending?.text === text ? pending.id : crypto.randomUUID();
+    if (!isRetry) appendUser(text);
+    const assistantId = pending?.assistantId ?? ++messageId.current;
+    pendingTextMessage.current = { id, text, assistantId };
+    if (isRetry) setMessages((previous) => previous.filter((item) => item.id !== assistantId));
+    setStatus("processing"); setSpeechPending(null); setInterim("");
+    delayTimer.current = setTimeout(() => setError("This is taking a little longer than usual."), 8000);
+    recoveryTimer.current = setTimeout(() => setStatus("recovering"), 15000);
+    const response = await fetch("/api/voice/message", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversationId: conversationId.current, sessionToken: sessionToken.current,
+        messageId: id, text,
+      }),
+      signal: AbortSignal.timeout(31000), cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Message failed");
+    if (!response.body) throw new Error("Message stream unavailable");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let received = false;
+    const handleLine = (line: string) => {
+      if (!line.trim()) return;
+      const event = JSON.parse(line) as { type: string; text?: string; message?: string };
+      if (event.type === "error") throw new Error(event.message || "Message failed");
+      if (event.type !== "delta" || !event.text) return;
+      const delta = event.text;
+      received = true;
+      clearResponseTimers(); setStatus("responding");
+      const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      setMessages((previous) => previous.some((item) => item.id === assistantId)
+        ? previous.map((item) => item.id === assistantId
+          ? { ...item, text: item.text + delta, spoken: item.text.length + delta.length }
+          : item)
+        : [...previous, { id: assistantId, role: "assistant", text: delta, spoken: delta.length, time: now }]);
+    };
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      lines.forEach(handleLine);
+      if (done) break;
+    }
+    if (buffer) handleLine(buffer);
+    if (!received) throw new Error("Empty response");
+    pendingTextMessage.current = null;
+    clearResponseTimers();
+    setError(""); setStatus("listening"); armIdleTimer();
+  }
+
+  async function fallBackToText(message: string) {
+    setStatus("recovering"); setError(message); setSpeechPending(null); setInterim("");
+    await release(true);
+    modeRef.current = "text"; setMode("text"); setStatus("listening");
   }
 
   async function start(startMode: Mode = modeRef.current, firstText?: string) {
     if (client.current || status === "connecting") return;
     const attempt = ++generation.current;
     const isCurrent = () => generation.current === attempt;
+    const continuing = Boolean(conversationId.current);
     modeRef.current = startMode; setMode(startMode);
     wantedMic.current = startMode === "talk";
-    setStatus("connecting"); setError(""); setMessages([]); setInterim(""); setSpeechPending(null);
+    setStatus("connecting"); setError("");
+    if (!continuing) setMessages([]);
+    setInterim(""); setSpeechPending(null);
     setMuted(startMode !== "talk"); setHolding(false); setNeedsPlayback(false);
     replyId.current = null;
     autoClosing.current = false; farewellPlayed.current = false; bookingComplete.current = false;
-    bookingConfirmationStarted.current = false; clearVoiceTimers();
+    bookingConfirmationStarted.current = false;
+    if (continuing) clearResponseTimers(); else clearVoiceTimers();
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let connected = false;
     try {
       await closing.current;
       if (!isCurrent()) return;
       if (!window.isSecureContext) throw new Error("Voice needs HTTPS or localhost.");
-      const health = await fetch("/api/voice", { signal: AbortSignal.timeout(6000), cache: "no-store" });
-      if (!health.ok) throw new Error("Voice unavailable");
-      const voiceConfig = await health.json() as { iceServers?: RTCIceServer[] };
-      const [{ PipecatClient }, { SmallWebRTCTransport }, { default: Daily }] = await Promise.all([
-        import("@pipecat-ai/client-js"), import("@pipecat-ai/small-webrtc-transport"), import("@daily-co/daily-js"),
+      if (startMode === "text") {
+        await createSession("text");
+        if (firstText) { await sendText(firstText); setDraft(""); }
+        else setStatus("listening");
+        return;
+      }
+      const voiceConfig = await createSession(startMode === "talk" ? "voice" : "push_to_talk");
+      const [{ PipecatClient }, { ReliableSmallWebRTCTransport }, { default: Daily }] = await Promise.all([
+        import("@pipecat-ai/client-js"), import("@/lib/reliable-small-webrtc"), import("@daily-co/daily-js"),
       ]);
       if (!isCurrent()) return;
+      const transport = new ReliableSmallWebRTCTransport({
+        iceServers: voiceConfig.iceServers || [],
+        waitForICEGathering: true,
+        relayOnly: new URLSearchParams(window.location.search).get("voiceRelay") === "1",
+      });
+      const statsTransport: StatsTransport = transport;
       const pc = new PipecatClient({
         // Include the TURN relay candidate in the initial offer. The hosted
         // backend can then connect even when a visitor's direct candidate is
         // unreachable, without relying on a later trickle-ICE PATCH.
-        transport: new SmallWebRTCTransport({ iceServers: voiceConfig.iceServers || [], waitForICEGathering: true }),
-        enableMic: startMode !== "text", enableCam: false,
+        transport,
+        enableMic: true, enableCam: false,
         callbacks: {
           onBotReady: () => {
             if (!isCurrent()) return;
-            connected = true; clearTimeout(timeout); setStatus("listening");
-            sessionTimer.current = setTimeout(() => { void requestFarewell(); }, VOICE_SESSION_MS);
+            connected = true; clearTimeout(timeout); clearResponseTimers(); setStatus("listening");
+            void reportConnection("connected", statsTransport);
             if (startMode !== "talk") mic(false);
           },
           onBotStartedSpeaking: () => {
             if (!isCurrent()) return;
-            if (idleTimer.current) clearTimeout(idleTimer.current);
-            idleTimer.current = null;
+            clearResponseTimers();
             if (bookingComplete.current) bookingConfirmationStarted.current = true;
             setStatus("speaking");
           },
@@ -235,19 +406,18 @@ export function VoiceAssistant({ email }: { email: string }) {
             if (bookingComplete.current) {
               if (bookingConfirmationStarted.current) {
                 clearVoiceTimers();
-                shutdownTimer.current = setTimeout(() => { void end(); }, 600);
+                shutdownTimer.current = setTimeout(() => { void end("booking_completed"); }, 600);
               }
               return;
             }
             if (autoClosing.current) {
               if (shutdownTimer.current) clearTimeout(shutdownTimer.current);
-              shutdownTimer.current = setTimeout(() => { void end(); }, 900);
+              shutdownTimer.current = setTimeout(() => { void end("inactivity_timeout"); }, 900);
             } else armIdleTimer();
           },
           onUserStartedSpeaking: () => {
             if (!isCurrent()) return;
-            if (idleTimer.current) clearTimeout(idleTimer.current);
-            idleTimer.current = null;
+            clearResponseTimers();
             setSpeechPending("listening");
           },
           onUserStoppedSpeaking: () => {
@@ -255,6 +425,7 @@ export function VoiceAssistant({ email }: { email: string }) {
             setSpeechPending("transcribing");
           },
           onBotLlmStarted: () => { if (isCurrent()) replyId.current = null; },
+          onBotLlmStopped: () => { if (isCurrent()) replyId.current = null; },
           // Model text arrives first. Playback-aligned TTS events advance the highlight.
           onBotLlmText: (data) => {
             if (!isCurrent() || !data.text) return;
@@ -278,24 +449,26 @@ export function VoiceAssistant({ email }: { email: string }) {
             bookingComplete.current = true; bookingConfirmationStarted.current = false;
             clearVoiceTimers();
             // If Gemini fails to deliver its confirmation turn, still release the call.
-            shutdownTimer.current = setTimeout(() => { void end(); }, 30_000);
+            shutdownTimer.current = setTimeout(() => { void end("booking_completed"); }, 30_000);
           },
           onDisconnected: () => {
             if (!isCurrent()) return;
             clearTimeout(timeout);
-            if (connected) void end();
+            void reportConnection("disconnected", statsTransport);
+            if (connected) void fallBackToText("Voice disconnected. You can continue here by typing.");
             else { setError("The conversation couldn’t start. Please try again or email the studio."); setStatus("error"); void release(); }
           },
           onError: () => {
             if (!isCurrent()) return;
-            clearTimeout(timeout); setError("The connection was interrupted. Start a new conversation or email us.");
-            setStatus("error"); void release();
+            clearTimeout(timeout);
+            void reportConnection("degraded", statsTransport);
+            void fallBackToText("Voice was interrupted. Your conversation is still available by text.");
           },
           onDeviceError: () => {
             if (!isCurrent()) return;
-            wantedMic.current = false; setMuted(true); setHolding(false);
-            modeRef.current = "text"; setMode("text");
-            setError("Microphone access is unavailable. You can type instead, or allow microphone access in your browser.");
+            void fallBackToText(
+              "Microphone access is unavailable. You can type instead, or allow microphone access in your browser."
+            );
           },
           onAvailableMicsUpdated: (devices) => { if (isCurrent()) setMics(devices); },
           onMicUpdated: (device) => {
@@ -318,6 +491,9 @@ export function VoiceAssistant({ email }: { email: string }) {
             if (data.final) {
               if (data.text.trim()) appendUser(data.text, true);
               setInterim(""); setSpeechPending(null);
+              setStatus("processing");
+              delayTimer.current = setTimeout(() => setError("This is taking a little longer than usual."), 8000);
+              recoveryTimer.current = setTimeout(() => setStatus("recovering"), 15000);
             } else {
               setInterim(data.text); setSpeechPending("transcribing");
             }
@@ -334,15 +510,19 @@ export function VoiceAssistant({ email }: { email: string }) {
       };
       timeout = setTimeout(() => {
         if (!isCurrent()) return;
-        setError("We couldn’t connect in time. Check your connection and try again.");
-        setStatus("error"); void release();
-      }, 30000);
+        void fallBackToText("Voice could not connect in time. You can continue by typing.");
+      }, 20000);
+      recoveryTimer.current = setTimeout(() => {
+        if (isCurrent()) setStatus("recovering");
+      }, 10000);
       await pc.connect({ webrtcRequestParams: { endpoint: "/api/voice", requestData: {
-        greet: !firstText,
+        greet: !continuing && !firstText,
         channel: startMode === "talk" ? "voice" : startMode === "hold" ? "push_to_talk" : "text",
+        conversation_id: conversationId.current,
+        session_token: sessionToken.current,
       } } });
       if (!isCurrent()) return;
-      if (firstText) { await send(pc, firstText); setDraft(""); }
+      if (firstText) { await fallBackToText(""); await sendText(firstText); setDraft(""); }
     } catch (cause) {
       if (!isCurrent()) return;
       clearTimeout(timeout);
@@ -359,7 +539,8 @@ export function VoiceAssistant({ email }: { email: string }) {
     if (!text || sending || status === "connecting") return;
     setSending(true); setError("");
     try {
-      if (client.current && active) { await send(client.current, text); setDraft(""); }
+      if (client.current) await fallBackToText("");
+      if (conversationId.current) { await sendText(text); setDraft(""); }
       else await start("text", text);
     } catch { setError("Your message couldn’t be sent. Please try again."); }
     finally { setSending(false); }
@@ -367,7 +548,8 @@ export function VoiceAssistant({ email }: { email: string }) {
 
   function switchMode(next: Mode) {
     modeRef.current = next; setMode(next); setHolding(false); setError("");
-    if (active) mic(next === "talk");
+    if (active && client.current) mic(next === "talk");
+    else if (conversationId.current && next !== "text") void start(next);
   }
 
   function hold(down: boolean) {
@@ -375,7 +557,7 @@ export function VoiceAssistant({ email }: { email: string }) {
     setHolding(down); mic(down);
   }
 
-  function close() { void end(); dialog.current?.close(); }
+  function close() { void end("client_ended"); dialog.current?.close(); }
   const statusLabel = status === "listening"
     ? mode === "text" ? "Ready for your message" : mode === "hold" && !holding ? "Hold the button to speak" : muted ? "Microphone muted" : labels[status]
     : labels[status];
@@ -408,7 +590,7 @@ export function VoiceAssistant({ email }: { email: string }) {
         <form className={styles.composer} onSubmit={submit}><label className={styles.srOnly} htmlFor="studio-message">Your message</label><input id="studio-message" value={draft} maxLength={2000} onChange={(event) => setDraft(event.target.value)} placeholder="Type a message…" autoComplete="off" /><button aria-label="Send message" disabled={!draft.trim() || sending || status === "connecting"} type="submit"><Send size={18} /></button></form>
         {mode !== "text" && active && <div className={styles.devices}><label htmlFor="studio-mic">Microphone</label><select id="studio-mic" value={selectedMic} onChange={(event) => { setSelectedMic(event.target.value); client.current?.updateMic(event.target.value); }}><option value="">System default</option>{mics.filter((device) => device.deviceId).map((device) => <option key={device.deviceId} value={device.deviceId}>{device.label || "Microphone"}</option>)}</select></div>}
         <div className={styles.controls}>
-          {active ? <>{mode === "talk" && <button className={styles.mute} aria-pressed={muted} onClick={() => mic(muted)}>{muted ? <MicOff size={18} /> : <Mic size={18} />}{muted ? "Unmute mic" : "Mute mic"}</button>}{mode === "hold" && <button className={styles.hold} aria-pressed={holding} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); hold(true); }} onPointerUp={() => hold(false)} onPointerCancel={() => hold(false)} onLostPointerCapture={() => hold(false)} onBlur={() => hold(false)} onKeyDown={(event) => { if ((event.key === " " || event.key === "Enter") && !event.repeat) { event.preventDefault(); hold(true); } }} onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); hold(false); } }}><Mic size={18} />{holding ? "Listening…" : "Hold to talk"}</button>}<button className={styles.end} onClick={() => void end()}><PhoneOff size={18} /> End</button></> : status === "connecting" ? <button className={styles.start} onClick={() => void end()}>Connecting… Cancel</button> : <button className={styles.start} onClick={() => void start()}>{mode === "text" ? <Keyboard size={18} /> : <Mic size={18} />}{mode === "text" ? "Start conversation" : "Start talking"}<ArrowUpRight size={18} /></button>}
+          {active ? <>{mode === "talk" && <button className={styles.mute} aria-pressed={muted} onClick={() => mic(muted)}>{muted ? <MicOff size={18} /> : <Mic size={18} />}{muted ? "Unmute mic" : "Mute mic"}</button>}{mode === "hold" && <button className={styles.hold} aria-pressed={holding} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); hold(true); }} onPointerUp={() => hold(false)} onPointerCancel={() => hold(false)} onLostPointerCapture={() => hold(false)} onBlur={() => hold(false)} onKeyDown={(event) => { if ((event.key === " " || event.key === "Enter") && !event.repeat) { event.preventDefault(); hold(true); } }} onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); hold(false); } }}><Mic size={18} />{holding ? "Listening…" : "Hold to talk"}</button>}<button className={styles.end} onClick={() => void end("client_ended")}><PhoneOff size={18} /> End</button></> : status === "connecting" ? <button className={styles.start} onClick={() => void end("connection_cancelled")}>Connecting… Cancel</button> : <button className={styles.start} onClick={() => void start()}>{mode === "text" ? <Keyboard size={18} /> : <Mic size={18} />}{mode === "text" ? "Start conversation" : "Start talking"}<ArrowUpRight size={18} /></button>}
         </div>
         <footer className={styles.footer}><p>Starting shares your messages and enabled microphone audio with Google Gemini. We save text transcripts and lead progress for studio follow-up, but never raw audio. If you book, confirmed contact and appointment details are sent to Cal.com.</p><a href={`mailto:${email}`}>Prefer email? Talk to a person <ArrowUpRight size={12} /></a></footer>
         <audio ref={audio} autoPlay playsInline muted={!sound} />

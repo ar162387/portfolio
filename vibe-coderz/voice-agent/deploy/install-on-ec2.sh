@@ -30,6 +30,13 @@ SQL
 chown -R vibecoderzz:vibecoderzz /opt/vibecoderzz
 sudo -u vibecoderzz python3 -m venv "$APP/.venv"
 sudo -u vibecoderzz "$APP/.venv/bin/pip" install --disable-pip-version-check -r "$APP/requirements.txt"
+# The service filesystem is read-only. Pipecat's RTVI transcript observer
+# needs this tokenizer at runtime, so download it before starting the service.
+install -d -o vibecoderzz -g vibecoderzz /opt/vibecoderzz/nltk_data
+sudo -u vibecoderzz "$APP/.venv/bin/python" -m nltk.downloader \
+  -d /opt/vibecoderzz/nltk_data punkt_tab
+sudo -u vibecoderzz env NLTK_DATA=/opt/vibecoderzz/nltk_data \
+  "$APP/.venv/bin/python" -c 'from nltk.tokenize import sent_tokenize; assert sent_tokenize("Ready. Test.") == ["Ready.", "Test."]'
 
 install -o root -g root -m 0755 "$DEPLOY/pull-secrets.sh" /usr/local/sbin/vibecoderzz-pull-secrets
 AWS_REGION=ap-southeast-1 /usr/local/sbin/vibecoderzz-pull-secrets
@@ -57,7 +64,11 @@ no-tls
 no-dtls
 simple-log
 EOF
-chmod 600 /etc/turnserver.conf
+# Debian/Ubuntu runs coturn as turnserver, not root. An unreadable config
+# makes coturn fall back to defaults (private relay IPs and wrong ports).
+chown root:turnserver /etc/turnserver.conf
+chmod 640 /etc/turnserver.conf
+sudo -u turnserver test -r /etc/turnserver.conf
 sed -i 's/^TURNSERVER_ENABLED=.*/TURNSERVER_ENABLED=1/' /etc/default/coturn
 
 install -o root -g root -m 0644 "$DEPLOY/vibecoderzz-voice.service" /etc/systemd/system/vibecoderzz-voice.service
@@ -97,5 +108,8 @@ systemctl daemon-reload
 caddy validate --config /etc/caddy/Caddyfile
 systemctl enable --now coturn
 systemctl enable --now vibecoderzz-voice
+# enable --now does not reload configuration for an already running service.
+systemctl restart coturn
+systemctl restart vibecoderzz-voice
 systemctl reload caddy
 systemctl --no-pager --full status vibecoderzz-voice coturn | sed -n '1,80p'

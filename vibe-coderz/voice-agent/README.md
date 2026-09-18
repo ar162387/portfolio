@@ -59,18 +59,32 @@ environment values; production rendering also needs them at build time.
   60 seconds of visitor silence, and a five-minute maximum session duration.
   After 60 seconds of silence following an agent turn, the website plays one closing
   message and ends the connection.
+  The server also enforces the five-minute maximum, releases unconnected sessions
+  after 20 seconds, and releases lost clients after 15 seconds. Database failures
+  cannot retain a session slot. Authenticated health reports session/pending counts.
 - The server health endpoint checks configuration, not Google quota/model access.
   Provider failures are handled by the client connection/error states.
 - Open mic, push-to-talk and typing share one session and history. Typing can start
   without requesting microphone permission. Microphone selection and a separate
   assistant-audio mute are available.
+- Production voice defaults to `gemini-3.8-live`. The independent HTTP text fallback
+  uses `gemini-3.1-flash-lite` with minimal thinking for its higher free request
+  allowance and low latency. Typed responses stream as NDJSON and use stable message
+  IDs, so a retry cannot silently lose a later message or execute a booking twice.
+- The scripted opening is claimed atomically in the database. Reconnects, duplicate
+  ready events, voice-to-text recovery, and an already-started typed conversation cannot
+  replay it. Interrupted assistant turns remain distinct from completed turns.
 - Model text appears as it streams. Playback-aligned Pipecat `bot-tts-text` events
   advance the spoken highlight. Gemini Live supplies transcript chunks, not precise
   per-word timestamps; this is chunk-level highlighting, not word alignment.
   A cascaded text LLM + timestamp-capable TTS pipeline would be needed for the latter.
-- Local speech-stop detection uses Pipecat's recommended 0.2-second window. The UI
+- Local Silero speech-stop detection uses an explicit 0.6-second window. Affective
+  dialogue is disabled for the reliability baseline. The UI
   immediately shows listening/transcribing feedback; Gemini Live still supplies the
   authoritative user transcript, so the final text can arrive after the voice turn.
+- A Gemini `1007` audio-configuration rejection permanently ends that Live session.
+  The browser preserves the conversation and changes to HTTP text instead of repeatedly
+  reconnecting the same rejected configuration.
 - Closing the dialog, ending, connection failure and unmounting stop local audio.
   Push-to-talk also mutes on pointer release, keyboard release, blur and visibility change.
 - The sales conversation is deliberately limited to voice agents and custom CRM or
@@ -145,6 +159,29 @@ database, installs dependencies, refreshes secrets, configures coturn, validates
 and only then enables the service. The EC2 security group also needs TCP/UDP 3478 and UDP
 49160–49200 inbound for TURN. Do not run the Nimbess CloudFormation stack merely to add
 these rules: that stack has known replacement drift on the live instance.
+
+For managed TURN, add `CLOUDFLARE_TURN_KEY_ID` and `CLOUDFLARE_TURN_API_TOKEN` to the
+same SSM prefix and set `MANAGED_TURN_ENABLED=true`. The service requests short-lived
+ICE credentials for both the browser and EC2 peer. Cloudflare supplies STUN, TURN/UDP,
+TURN/TCP, and TURN/TLS on 443 in one ICE list. If credential issuance fails, the handler
+returns to the existing coturn relay. Keep the flag off until ordinary and restrictive
+network staging checks both pass.
+
+The browser emits privacy-limited connection diagnostics after connection and failure:
+candidate types, selected UDP/TCP/TLS transport, round-trip time, packet loss, jitter,
+and connection state. It does not send IP addresses, credentials, raw audio, or message
+content. Provider configuration rejection and conversation termination reason are
+recorded separately so transport and model failures can be measured independently.
+
+The installer preloads NLTK `punkt_tab` into `/opt/vibecoderzz/nltk_data` before
+starting the protected, read-only service. Missing tokenizer data otherwise crashes
+RTVI transcript processing after the first response fragment. `NLTK_DATA` is set in
+the service unit and tokenization is checked at startup.
+
+Coturn runs as `turnserver`; `/etc/turnserver.conf` must be `root:turnserver` with
+mode `640`. Mode `600` prevents coturn from reading its settings and can cause it to
+run with defaults, advertising private relay addresses outside the allowed port
+range. Both coturn and the voice service are restarted after installer updates.
 
 References: [Pipecat Gemini Live](https://docs.pipecat.ai/pipecat/features/gemini-live),
 [SmallWebRTC](https://docs.pipecat.ai/api-reference/client/js/transports/small-webrtc),

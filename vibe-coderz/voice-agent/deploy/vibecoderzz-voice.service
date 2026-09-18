@@ -9,6 +9,7 @@ User=vibecoderzz
 Group=vibecoderzz
 WorkingDirectory=/opt/vibecoderzz/portfolio/vibe-coderz/voice-agent
 EnvironmentFile=/etc/vibecoderzz/voice-agent.env
+Environment=NLTK_DATA=/opt/vibecoderzz/nltk_data
 ExecStart=/opt/vibecoderzz/portfolio/vibe-coderz/voice-agent/.venv/bin/uvicorn \
     server:app \
     --host 127.0.0.1 \

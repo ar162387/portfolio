@@ -39,14 +39,19 @@ if missing:
 
 allowed = required | {
     "GEMINI_LIVE_MODEL",
+    "GEMINI_TEXT_MODEL",
     "GEMINI_VOICE",
     "GEMINI_AFFECTIVE_DIALOG",
+    "TEXT_FALLBACK_ENABLED",
     "CAL_API_KEY",
     "CAL_EVENT_TYPE_ID",
     "CAL_USERNAME",
     "CAL_EVENT_TYPE_SLUG",
     "VISITOR_BOOKING_START_HOUR",
     "VISITOR_BOOKING_END_HOUR",
+    "MANAGED_TURN_ENABLED",
+    "CLOUDFLARE_TURN_KEY_ID",
+    "CLOUDFLARE_TURN_API_TOKEN",
 }
 settings = {key: value for key, value in values.items() if key in allowed and value != ""}
 settings.update({
@@ -54,6 +59,9 @@ settings.update({
     "TURN_HOST": "dev.vibecoderzz.com",
     "TURN_INTERNAL_HOST": "172.31.40.216",
     "MAX_VOICE_SESSIONS": "2",
+    "CONNECT_TIMEOUT_SECONDS": "20",
+    "DISCONNECT_TIMEOUT_SECONDS": "15",
+    "TEXT_FALLBACK_ENABLED": "true",
     "PIPECAT_SCTP_MAX_CHUNK_SIZE": "1100",
 })
 
