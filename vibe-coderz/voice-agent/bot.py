@@ -36,8 +36,20 @@ class ReliableGeminiLiveService(GeminiLiveLLMService):
         return None
 
     async def _handle_connection_error(self, error: Exception) -> bool:
-        message = str(error).lower()
-        if "1007" in message or "content_type_audio" in message or "audio content type" in message:
+        received = getattr(error, "rcvd", None)
+        sent = getattr(error, "sent", None)
+        code = next((value for value in (
+            getattr(error, "code", None),
+            getattr(received, "code", None),
+            getattr(sent, "code", None),
+        ) if value is not None), None)
+        reason = " ".join(str(value) for value in (
+            getattr(error, "reason", ""),
+            getattr(received, "reason", ""),
+            getattr(sent, "reason", ""),
+            str(error),
+        )).lower()
+        if code == 1007 or "1007" in reason or "content_type_audio" in reason or "audio content type" in reason:
             logger.bind(diagnostic=True, event="provider_rejected_configuration", code=1007).info(
                 "voice_provider"
             )
@@ -47,7 +59,21 @@ class ReliableGeminiLiveService(GeminiLiveLLMService):
                 force_treat_as_permanent=True,
             )
             return False
-        return await super()._handle_connection_error(error)
+        self._consecutive_failures += 1
+        retry = self._consecutive_failures < 2
+        logger.bind(
+            diagnostic=True,
+            event="provider_connection_error",
+            attempt=self._consecutive_failures,
+            retry=retry,
+        ).info("voice_provider")
+        if not retry:
+            await self.push_error(
+                error_msg="The live audio provider connection failed twice.",
+                exception=error,
+                force_treat_as_permanent=True,
+            )
+        return retry
 
     def mark_successful_turn(self) -> None:
         """Only a completed conversational turn proves a recovered session is healthy."""

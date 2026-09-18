@@ -64,17 +64,14 @@ environment values; production rendering also needs them at build time.
   cannot retain a session slot. Authenticated health reports session/pending counts.
 - The server health endpoint checks configuration, not Google quota/model access.
   Provider failures are handled by the client connection/error states.
-- Open mic, push-to-talk and typing share one session and history. Typing can start
-  without requesting microphone permission. Microphone selection and a separate
-  assistant-audio mute are available.
+- Open mic, push-to-talk and typing share one Gemini Live session and history. Typed
+  input is sent through Pipecat's reliable RTVI channel and receives the same native
+  audio voice response as speech. There is no separate text-only model or automatic
+  text fallback. Microphone selection and a separate assistant-audio mute are available.
 - Production voice defaults to `gemini-3.8-live`. If that Live session fails, the
-  coordinator makes one voice-to-voice recovery attempt with
-  `gemini-3.1-flash-live-preview`, the same `Aoede` voice, the same prompt and tools,
-  and restored completed conversation history. It never changes a voice call into text.
-- Visitors can separately choose Type mode. It uses `gemini-3.1-flash-lite` with
-  minimal thinking for its higher free request allowance and low latency. Typed
-  responses stream as NDJSON and use stable message IDs, so a retry cannot silently
-  lose a later message or execute a booking twice.
+  coordinator makes one voice-to-voice recovery attempt with the same model, `Aoede`
+  voice, prompt, tools, and completed conversation history. It never changes a voice
+  call into text or swaps the visitor to a different speaking persona.
 - The scripted opening is claimed atomically in the database. Reconnects, duplicate
   ready events, voice-to-text recovery, and an already-started typed conversation cannot
   replay it. Interrupted assistant turns remain distinct from completed turns.

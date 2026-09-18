@@ -4,7 +4,6 @@ import asyncio
 import base64
 import hashlib
 import hmac
-import json
 import os
 import secrets
 import sys
@@ -17,7 +16,6 @@ from typing import Literal
 from dotenv import load_dotenv
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
-from fastapi.responses import StreamingResponse
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -61,9 +59,7 @@ from dashboard_store import (  # noqa: E402
     logout,
     metrics,
     start_conversation,
-    update_message_delivery,
 )
-from text_agent import reply as text_reply, reply_stream as text_reply_stream  # noqa: E402
 from pipecat.transports.smallwebrtc.request_handler import (  # noqa: E402
     IceCandidate, SmallWebRTCPatchRequest, SmallWebRTCRequest, SmallWebRTCRequestHandler,
 )
@@ -106,7 +102,6 @@ handler = SmallWebRTCRequestHandler(ice_servers=[server_turn] if server_turn els
 sessions: dict[str, asyncio.Task] = {}
 voice_conversations: dict[str, tuple[str, asyncio.Task, object]] = {}
 voice_handoff_locks: dict[str, asyncio.Lock] = {}
-conversation_locks: dict[str, asyncio.Lock] = {}
 pending = 0
 starts: deque[float] = deque()
 lock = asyncio.Lock()
@@ -305,14 +300,6 @@ class ConnectionDiagnostic(BaseModel):
     jitter_ms: float | None = Field(default=None, ge=0, le=120_000)
 
 
-class TextMessage(BaseModel):
-    conversation_id: str = Field(max_length=36)
-    session_token: str = Field(max_length=500)
-    message_id: str = Field(min_length=8, max_length=80)
-    text: str = Field(min_length=1, max_length=2000)
-    studio_knowledge: Knowledge
-
-
 class VoiceTranscript(BaseModel):
     conversation_id: str = Field(max_length=36)
     session_token: str = Field(max_length=500)
@@ -436,7 +423,6 @@ async def close_session(body: SessionEnd):
     if not _verify_session_token(body.conversation_id, body.session_token):
         raise HTTPException(401, "Invalid session")
     await asyncio.to_thread(end_conversation, body.conversation_id, body.reason)
-    conversation_locks.pop(body.conversation_id, None)
     return {"ok": True}
 
 
@@ -479,155 +465,6 @@ async def record_voice_transcript(body: VoiceTranscript):
         interrupted=body.interrupted,
     )
     return {"ok": True, "saved": saved}
-
-
-@app.post("/message", dependencies=[Depends(authenticate)])
-async def send_text_message(body: TextMessage):
-    require_key()
-    if os.getenv("TEXT_CHAT_ENABLED", "true").lower() not in {"1", "true", "yes"}:
-        raise HTTPException(503, "Text chat is disabled")
-    if not _verify_session_token(body.conversation_id, body.session_token):
-        raise HTTPException(401, "Invalid session")
-    if not await asyncio.to_thread(conversation_exists, body.conversation_id):
-        raise HTTPException(404, "Conversation not found")
-    lock = conversation_locks.setdefault(body.conversation_id, asyncio.Lock())
-    async with lock:
-        response_id = f"{body.message_id}:assistant"
-        existing = await asyncio.to_thread(conversation_messages, body.conversation_id)
-        for item in existing:
-            if item.get("message_id") == response_id:
-                return {"message_id": response_id, "text": item["text"], "duplicate": True}
-        prior = [item for item in existing if item.get("message_id") != body.message_id]
-        inserted = await asyncio.to_thread(
-            add_message,
-            body.conversation_id,
-            "user",
-            body.text,
-            None,
-            message_id=body.message_id,
-            delivery_state="processing",
-        )
-        if not inserted:
-            prior = [item for item in existing if item.get("message_id") != body.message_id]
-        try:
-            answer = await asyncio.wait_for(
-                text_reply(
-                    body.conversation_id,
-                    body.studio_knowledge.model_dump(),
-                    prior,
-                    body.text,
-                ),
-                timeout=25,
-            )
-        except TimeoutError as exc:
-            await asyncio.to_thread(
-                update_message_delivery, body.conversation_id, body.message_id, "failed"
-            )
-            raise HTTPException(504, "Assistant response timed out") from exc
-        except Exception as exc:
-            await asyncio.to_thread(
-                update_message_delivery, body.conversation_id, body.message_id, "failed"
-            )
-            logger.warning("Text chat failed; provider details suppressed.")
-            raise HTTPException(503, "Assistant response unavailable") from exc
-        await asyncio.to_thread(
-            update_message_delivery, body.conversation_id, body.message_id, "completed"
-        )
-        await asyncio.to_thread(
-            add_message,
-            body.conversation_id,
-            "assistant",
-            answer,
-            None,
-            message_id=response_id,
-            delivery_state="completed",
-        )
-        return {"message_id": response_id, "text": answer, "duplicate": False}
-
-
-@app.post("/message/stream", dependencies=[Depends(authenticate)])
-async def stream_text_message(body: TextMessage):
-    require_key()
-    if os.getenv("TEXT_CHAT_ENABLED", "true").lower() not in {"1", "true", "yes"}:
-        raise HTTPException(503, "Text chat is disabled")
-    if not _verify_session_token(body.conversation_id, body.session_token):
-        raise HTTPException(401, "Invalid session")
-    if not await asyncio.to_thread(conversation_exists, body.conversation_id):
-        raise HTTPException(404, "Conversation not found")
-
-    async def events():
-        lock = conversation_locks.setdefault(body.conversation_id, asyncio.Lock())
-        async with lock:
-            response_id = f"{body.message_id}:assistant"
-            existing = await asyncio.to_thread(conversation_messages, body.conversation_id)
-            for item in existing:
-                if item.get("message_id") == response_id and item.get("delivery_state") == "completed":
-                    yield json.dumps({
-                        "type": "delta", "text": item["text"], "message_id": response_id,
-                    }) + "\n"
-                    yield json.dumps({"type": "done", "message_id": response_id, "duplicate": True}) + "\n"
-                    return
-            prior = [item for item in existing if item.get("message_id") != body.message_id]
-            await asyncio.to_thread(
-                add_message,
-                body.conversation_id,
-                "user",
-                body.text,
-                None,
-                message_id=body.message_id,
-                delivery_state="processing",
-            )
-            parts: list[str] = []
-            try:
-                async with asyncio.timeout(25):
-                    async for part in text_reply_stream(
-                        body.conversation_id,
-                        body.studio_knowledge.model_dump(),
-                        prior,
-                        body.text,
-                    ):
-                        parts.append(part)
-                        yield json.dumps({"type": "delta", "text": part, "message_id": response_id}) + "\n"
-                answer = "".join(parts).strip()
-                if not answer:
-                    raise RuntimeError("Text model returned no response")
-                await asyncio.to_thread(
-                    add_message,
-                    body.conversation_id,
-                    "assistant",
-                    answer,
-                    None,
-                    message_id=response_id,
-                    delivery_state="completed",
-                )
-                await asyncio.to_thread(
-                    update_message_delivery, body.conversation_id, body.message_id, "completed"
-                )
-                yield json.dumps({"type": "done", "message_id": response_id, "duplicate": False}) + "\n"
-            except asyncio.CancelledError:
-                if parts:
-                    await asyncio.to_thread(
-                        add_message,
-                        body.conversation_id,
-                        "assistant",
-                        "".join(parts),
-                        None,
-                        message_id=response_id,
-                        delivery_state="interrupted",
-                        interrupted=True,
-                    )
-                await asyncio.to_thread(
-                    update_message_delivery, body.conversation_id, body.message_id, "interrupted",
-                    interrupted=True,
-                )
-                raise
-            except Exception:
-                await asyncio.to_thread(
-                    update_message_delivery, body.conversation_id, body.message_id, "failed"
-                )
-                yield json.dumps({"type": "error", "message": "Assistant response unavailable"}) + "\n"
-
-    return StreamingResponse(events(), media_type="application/x-ndjson")
 
 
 @app.post("/api/offer", dependencies=[Depends(authenticate)])

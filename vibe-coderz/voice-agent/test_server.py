@@ -1,6 +1,5 @@
 """Checks for the private boundary and bounded prototype sessions; no Gemini calls."""
 import asyncio
-import json
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -8,7 +7,6 @@ from fastapi.testclient import TestClient
 
 import server
 from bot import ReliableGeminiLiveService, _env_seconds, create_worker, system_prompt
-from text_agent import _text_system_prompt
 from dashboard_store import claim_greeting, conversation_messages
 from calendar_tools import (
     CalConfig,
@@ -75,64 +73,9 @@ def test_browser_observed_assistant_transcript_is_idempotent(client):
     assert [item["text"] for item in messages] == [payload["text"]]
 
 
-def test_session_and_all_typed_messages_are_delivered_once(client, monkeypatch):
-    model = AsyncMock(side_effect=["First reply", "Second reply"])
-    monkeypatch.setattr(server, "text_reply", model)
-    session = client.post("/session", json={"channel": "text"}, headers=AUTH)
-    assert session.status_code == 200
-    credentials = session.json()
-
-    def send(message_id, text):
-        return client.post("/message", headers=AUTH, json={
-            "conversation_id": credentials["conversation_id"],
-            "session_token": credentials["session_token"],
-            "message_id": message_id,
-            "text": text,
-            "studio_knowledge": OFFER["studio_knowledge"],
-        })
-
-    first = send("message-0001", "I am a dentist")
-    second = send("message-0002", "I need appointment booking")
-    duplicate = send("message-0002", "I need appointment booking")
-    assert first.json()["text"] == "First reply"
-    assert second.json()["text"] == "Second reply"
-    assert duplicate.json() == {
-        "message_id": "message-0002:assistant", "text": "Second reply", "duplicate": True,
-    }
-    assert model.await_count == 2
-    messages = conversation_messages(credentials["conversation_id"])
-    assert [item["text"] for item in messages] == [
-        "I am a dentist", "First reply", "I need appointment booking", "Second reply"
-    ]
-    assert all(item["delivery_state"] == "completed" for item in messages)
-
-
-def test_typed_response_streams_and_replays_without_second_model_call(client, monkeypatch):
-    calls = []
-
-    async def model_stream(*args):
-        calls.append(args[-1])
-        yield "Appointment "
-        yield "booking sounds useful."
-
-    monkeypatch.setattr(server, "text_reply_stream", model_stream)
-    credentials = client.post("/session", json={"channel": "text"}, headers=AUTH).json()
-    payload = {
-        "conversation_id": credentials["conversation_id"],
-        "session_token": credentials["session_token"],
-        "message_id": "stream-0001",
-        "text": "I am a dentist",
-        "studio_knowledge": OFFER["studio_knowledge"],
-    }
-    first = client.post("/message/stream", json=payload, headers=AUTH)
-    replay = client.post("/message/stream", json=payload, headers=AUTH)
-    first_events = [json.loads(line) for line in first.text.splitlines()]
-    replay_events = [json.loads(line) for line in replay.text.splitlines()]
-    assert [item["text"] for item in first_events if item["type"] == "delta"] == [
-        "Appointment ", "booking sounds useful."
-    ]
-    assert replay_events[-1]["duplicate"] is True
-    assert calls == ["I am a dentist"]
+def test_text_only_backend_is_not_exposed(client):
+    assert client.post("/message", headers=AUTH, json={}).status_code == 404
+    assert client.post("/message/stream", headers=AUTH, json={}).status_code == 404
 
 
 def test_greeting_can_only_be_claimed_once(client):
@@ -152,6 +95,37 @@ def test_audio_configuration_error_is_permanent():
         assert result is False
         service.push_error.assert_awaited_once()
         assert service.push_error.await_args.kwargs["force_treat_as_permanent"] is True
+
+    asyncio.run(check())
+
+
+def test_audio_configuration_close_code_is_permanent():
+    service = Mock(push_error=AsyncMock())
+    error = RuntimeError()
+    error.rcvd = Mock(code=1007, reason="")
+    error.sent = None
+
+    async def check():
+        result = await ReliableGeminiLiveService._handle_connection_error(service, error)
+        assert result is False
+        service.push_error.assert_awaited_once()
+
+    asyncio.run(check())
+
+
+def test_transient_live_failures_stop_after_second_attempt():
+    service = Mock(push_error=AsyncMock(), _consecutive_failures=0)
+
+    async def check():
+        first = await ReliableGeminiLiveService._handle_connection_error(
+            service, RuntimeError("temporary")
+        )
+        second = await ReliableGeminiLiveService._handle_connection_error(
+            service, RuntimeError("temporary")
+        )
+        assert first is True
+        assert second is False
+        service.push_error.assert_awaited_once()
 
     asyncio.run(check())
 
@@ -339,8 +313,6 @@ def test_sales_prompt_is_scoped_and_truthful():
     assert "are a bot, AI, or human" in prompt
     assert "trivia, news, politics" in prompt.replace("\n", " ")
     assert "NO booking" in prompt
-    text_prompt = _text_system_prompt(OFFER["studio_knowledge"], booking_enabled=False)
-    assert "Do not send the scripted opening" in text_prompt
 
 
 def test_bad_silence_timeout_falls_back(monkeypatch):

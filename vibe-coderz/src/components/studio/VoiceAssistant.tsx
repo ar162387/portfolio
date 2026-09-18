@@ -83,7 +83,6 @@ export function VoiceAssistant({ email }: { email: string }) {
   const conversationId = useRef("");
   const sessionToken = useRef("");
   const sessionIceServers = useRef<RTCIceServer[]>([]);
-  const pendingTextMessage = useRef<{ id: string; text: string; assistantId: number } | null>(null);
   const voiceRecoveryAttempt = useRef(0);
   const voiceRecoveryInProgress = useRef(false);
   const autoClosing = useRef(false);
@@ -206,7 +205,6 @@ export function VoiceAssistant({ email }: { email: string }) {
     await release();
     conversationId.current = ""; sessionToken.current = "";
     sessionIceServers.current = [];
-    pendingTextMessage.current = null;
   }
 
   useEffect(() => {
@@ -304,65 +302,18 @@ export function VoiceAssistant({ email }: { email: string }) {
 
   async function sendText(text: string) {
     clearResponseTimers();
-    await createSession("text");
-    const pending = pendingTextMessage.current;
-    const isRetry = pending?.text === text;
-    const id = pending?.text === text ? pending.id : crypto.randomUUID();
-    if (!isRetry) appendUser(text);
-    const assistantId = pending?.assistantId ?? ++messageId.current;
-    pendingTextMessage.current = { id, text, assistantId };
-    if (isRetry) setMessages((previous) => previous.filter((item) => item.id !== assistantId));
+    const current = client.current;
+    if (!current) throw new Error("Voice session unavailable");
+    appendUser(text);
     setStatus("processing"); setSpeechPending(null); setInterim("");
     delayTimer.current = setTimeout(() => setError("This is taking a little longer than usual."), 8000);
-    recoveryTimer.current = setTimeout(() => setStatus("recovering"), 15000);
-    const response = await fetch("/api/voice/message", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        conversationId: conversationId.current, sessionToken: sessionToken.current,
-        messageId: id, text,
-      }),
-      signal: AbortSignal.timeout(31000), cache: "no-store",
-    });
-    if (!response.ok) throw new Error("Message failed");
-    if (!response.body) throw new Error("Message stream unavailable");
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let received = false;
-    const handleLine = (line: string) => {
-      if (!line.trim()) return;
-      const event = JSON.parse(line) as { type: string; text?: string; message?: string };
-      if (event.type === "error") throw new Error(event.message || "Message failed");
-      if (event.type !== "delta" || !event.text) return;
-      const delta = event.text;
-      received = true;
-      clearResponseTimers(); setStatus("responding");
-      const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      setMessages((previous) => previous.some((item) => item.id === assistantId)
-        ? previous.map((item) => item.id === assistantId
-          ? { ...item, text: item.text + delta, spoken: item.text.length + delta.length }
-          : item)
-        : [...previous, { id: assistantId, role: "assistant", text: delta, spoken: delta.length, time: now }]);
-    };
-    while (true) {
-      const { done, value } = await reader.read();
-      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      lines.forEach(handleLine);
-      if (done) break;
-    }
-    if (buffer) handleLine(buffer);
-    if (!received) throw new Error("Empty response");
-    pendingTextMessage.current = null;
-    clearResponseTimers();
-    setError(""); setStatus("listening"); armIdleTimer();
-  }
-
-  async function switchToText(message = "") {
-    setStatus("recovering"); setError(message); setSpeechPending(null); setInterim("");
-    await release(true);
-    modeRef.current = "text"; setMode("text"); setStatus("listening");
+    recoveryTimer.current = setTimeout(() => {
+      setError("The voice reply stalled. Please try saying or sending that once more.");
+      setStatus("error");
+    }, 15000);
+    // Keep typed input inside the active Gemini Live session. The reply is still
+    // produced by the configured native-audio model and the same selected voice.
+    await current.sendText(text, { run_immediately: true, audio_response: true });
   }
 
   async function recoverVoice(message: string) {
@@ -408,13 +359,7 @@ export function VoiceAssistant({ email }: { email: string }) {
       await closing.current;
       if (!isCurrent()) return;
       if (!window.isSecureContext) throw new Error("Voice needs HTTPS or localhost.");
-      if (startMode === "text") {
-        await createSession("text");
-        if (firstText) { await sendText(firstText); setDraft(""); }
-        else setStatus("listening");
-        return;
-      }
-      const voiceConfig = await createSession(startMode === "talk" ? "voice" : "push_to_talk");
+      const voiceConfig = await createSession(startMode === "talk" ? "voice" : startMode === "hold" ? "push_to_talk" : "text");
       const [{ PipecatClient }, { ReliableSmallWebRTCTransport }, { default: Daily }] = await Promise.all([
         import("@pipecat-ai/client-js"), import("@/lib/reliable-small-webrtc"), import("@daily-co/daily-js"),
       ]);
@@ -582,7 +527,7 @@ export function VoiceAssistant({ email }: { email: string }) {
         recovery_attempt: recoveryAttempt,
       } } });
       if (!isCurrent()) return;
-      if (firstText) { await switchToText(); await sendText(firstText); setDraft(""); }
+      if (firstText) { await sendText(firstText); setDraft(""); }
     } catch (cause) {
       if (!isCurrent()) return;
       clearTimeout(timeout);
@@ -603,10 +548,14 @@ export function VoiceAssistant({ email }: { email: string }) {
     if (!text || sending || status === "connecting") return;
     setSending(true); setError("");
     try {
-      if (client.current) await switchToText();
-      if (conversationId.current) { await sendText(text); setDraft(""); }
+      modeRef.current = "text"; setMode("text"); mic(false);
+      if (client.current) { await sendText(text); setDraft(""); }
       else await start("text", text);
-    } catch { setError("Your message couldn’t be sent. Please try again."); }
+    } catch {
+      clearResponseTimers();
+      setStatus(client.current ? "listening" : "error");
+      setError("Your message couldn’t be sent through the voice agent. Please try again.");
+    }
     finally { setSending(false); }
   }
 
