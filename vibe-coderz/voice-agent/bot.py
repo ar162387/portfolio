@@ -168,6 +168,9 @@ def create_worker(
     *,
     greet: bool = True,
     conversation_id: str | None = None,
+    history: list[dict] | None = None,
+    model: str | None = None,
+    resume: bool = False,
 ) -> PipelineWorker:
     transport = SmallWebRTCTransport(
         connection, TransportParams(audio_in_enabled=True, audio_out_enabled=True)
@@ -181,7 +184,7 @@ def create_worker(
         api_key=os.environ["GOOGLE_API_KEY"],
         tools=tools,
         settings=GeminiLiveLLMService.Settings(
-            model=os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live"),
+            model=model or os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live"),
             voice=os.getenv("GEMINI_VOICE", "Aoede"),
             vad=GeminiVADParams(disabled=True),
             system_instruction=system_prompt(knowledge, booking_enabled=calendar_tools is not None),
@@ -189,10 +192,17 @@ def create_worker(
             not in {"0", "false", "no"},
         ),
     )
-    context = LLMContext([{
+    restored = [
+        {"role": "assistant" if item.get("role") == "assistant" else "user", "content": item["text"]}
+        for item in (history or [])
+        if item.get("role") in {"user", "assistant"}
+        and item.get("text")
+        and item.get("delivery_state") == "completed"
+    ]
+    context = LLMContext(restored or ([{
         "role": "user",
         "content": "Start now with the exact opening in your instructions. Do not add anything else.",
-    }] if greet else [])
+    }] if greet else []))
     aggregators = LLMContextAggregatorPair(
         context,
         realtime_service_mode=True,
@@ -219,7 +229,7 @@ def create_worker(
     @worker.rtvi.event_handler("on_client_ready")
     async def client_ready(_rtvi):
         nonlocal greeting_queued
-        if greet and not greeting_queued:
+        if (greet or resume) and not greeting_queued:
             greeting_queued = True
             await worker.queue_frames([LLMRunFrame()])
 
@@ -258,8 +268,19 @@ async def run_bot(
     *,
     greet: bool = True,
     conversation_id: str | None = None,
+    history: list[dict] | None = None,
+    model: str | None = None,
+    resume: bool = False,
 ):
-    worker = create_worker(connection, knowledge, greet=greet, conversation_id=conversation_id)
+    worker = create_worker(
+        connection,
+        knowledge,
+        greet=greet,
+        conversation_id=conversation_id,
+        history=history,
+        model=model,
+        resume=resume,
+    )
     runner = WorkerRunner(handle_sigint=False)
     try:
         await runner.run(worker)

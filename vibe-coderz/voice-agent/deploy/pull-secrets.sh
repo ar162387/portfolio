@@ -39,10 +39,11 @@ if missing:
 
 allowed = required | {
     "GEMINI_LIVE_MODEL",
+    "GEMINI_LIVE_FALLBACK_MODEL",
     "GEMINI_TEXT_MODEL",
     "GEMINI_VOICE",
     "GEMINI_AFFECTIVE_DIALOG",
-    "TEXT_FALLBACK_ENABLED",
+    "TEXT_CHAT_ENABLED",
     "CAL_API_KEY",
     "CAL_EVENT_TYPE_ID",
     "CAL_USERNAME",
@@ -61,7 +62,7 @@ settings.update({
     "MAX_VOICE_SESSIONS": "2",
     "CONNECT_TIMEOUT_SECONDS": "20",
     "DISCONNECT_TIMEOUT_SECONDS": "15",
-    "TEXT_FALLBACK_ENABLED": "true",
+    "TEXT_CHAT_ENABLED": "true",
     "PIPECAT_SCTP_MAX_CHUNK_SIZE": "1100",
 })
 

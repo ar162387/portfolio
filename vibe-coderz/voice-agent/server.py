@@ -139,10 +139,28 @@ async def serve_session(connection, body):
             conversation_id = await asyncio.to_thread(
                 start_conversation, transport_id=connection.pc_id, channel=body.channel
             )
-        greet = await asyncio.to_thread(claim_greeting, conversation_id, body.greet)
+        history = await asyncio.to_thread(conversation_messages, conversation_id)
+        completed_history = [
+            item for item in history if item.get("delivery_state") == "completed"
+        ]
+        greet = await asyncio.to_thread(
+            claim_greeting, conversation_id, body.greet or not completed_history
+        )
+        if body.recovery_attempt and not completed_history:
+            greet = True
+        resume = bool(
+            body.recovery_attempt
+            and completed_history
+            and completed_history[-1].get("role") == "user"
+        )
+        model = (
+            os.getenv("GEMINI_LIVE_FALLBACK_MODEL", "gemini-3.1-flash-live-preview")
+            if body.recovery_attempt
+            else os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live")
+        )
         worker = asyncio.create_task(run_bot(
             connection, body.studio_knowledge.model_dump(), greet=greet,
-            conversation_id=conversation_id,
+            conversation_id=conversation_id, history=history, model=model, resume=resume,
         ))
         watcher = asyncio.create_task(watch_connection(connection))
         children = [worker, watcher]
@@ -219,6 +237,7 @@ class Offer(BaseModel):
     channel: Literal["voice", "push_to_talk", "text"] = "voice"
     conversation_id: str | None = Field(default=None, max_length=36)
     session_token: str = Field(default="", max_length=500)
+    recovery_attempt: int = Field(default=0, ge=0, le=1)
     studio_knowledge: Knowledge
 
 
@@ -405,8 +424,8 @@ async def record_connection_diagnostic(body: ConnectionDiagnostic):
 @app.post("/message", dependencies=[Depends(authenticate)])
 async def send_text_message(body: TextMessage):
     require_key()
-    if os.getenv("TEXT_FALLBACK_ENABLED", "true").lower() not in {"1", "true", "yes"}:
-        raise HTTPException(503, "Text fallback is disabled")
+    if os.getenv("TEXT_CHAT_ENABLED", "true").lower() not in {"1", "true", "yes"}:
+        raise HTTPException(503, "Text chat is disabled")
     if not _verify_session_token(body.conversation_id, body.session_token):
         raise HTTPException(401, "Invalid session")
     if not await asyncio.to_thread(conversation_exists, body.conversation_id):
@@ -449,7 +468,7 @@ async def send_text_message(body: TextMessage):
             await asyncio.to_thread(
                 update_message_delivery, body.conversation_id, body.message_id, "failed"
             )
-            logger.warning("Text fallback failed; provider details suppressed.")
+            logger.warning("Text chat failed; provider details suppressed.")
             raise HTTPException(503, "Assistant response unavailable") from exc
         await asyncio.to_thread(
             update_message_delivery, body.conversation_id, body.message_id, "completed"
@@ -469,8 +488,8 @@ async def send_text_message(body: TextMessage):
 @app.post("/message/stream", dependencies=[Depends(authenticate)])
 async def stream_text_message(body: TextMessage):
     require_key()
-    if os.getenv("TEXT_FALLBACK_ENABLED", "true").lower() not in {"1", "true", "yes"}:
-        raise HTTPException(503, "Text fallback is disabled")
+    if os.getenv("TEXT_CHAT_ENABLED", "true").lower() not in {"1", "true", "yes"}:
+        raise HTTPException(503, "Text chat is disabled")
     if not _verify_session_token(body.conversation_id, body.session_token):
         raise HTTPException(401, "Invalid session")
     if not await asyncio.to_thread(conversation_exists, body.conversation_id):

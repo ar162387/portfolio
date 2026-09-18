@@ -136,6 +136,28 @@ def test_audio_configuration_error_is_permanent():
     asyncio.run(check())
 
 
+def test_voice_recovery_restores_history_and_uses_voice_fallback(monkeypatch):
+    connection = Mock(pc_id="recovery", disconnect=AsyncMock(), is_connected=Mock(return_value=True))
+    history = [{
+        "role": "user", "text": "I am a dentist", "message_id": "voice-user",
+        "delivery_state": "completed", "interrupted": False,
+    }]
+    bot = AsyncMock()
+    monkeypatch.setattr(server, "start_conversation", Mock(return_value="conversation"))
+    monkeypatch.setattr(server, "conversation_messages", Mock(return_value=history))
+    monkeypatch.setattr(server, "claim_greeting", Mock(return_value=False))
+    monkeypatch.setattr(server, "run_bot", bot)
+    monkeypatch.setenv("GEMINI_LIVE_FALLBACK_MODEL", "gemini-3.1-flash-live-preview")
+    offer = server.Offer(**{**OFFER, "recovery_attempt": 1, "greet": False})
+
+    asyncio.run(server.serve_session(connection, offer))
+
+    assert bot.await_args.kwargs["model"] == "gemini-3.1-flash-live-preview"
+    assert bot.await_args.kwargs["history"] == history
+    assert bot.await_args.kwargs["resume"] is True
+    assert bot.await_args.kwargs["greet"] is False
+
+
 def test_missing_key(client, monkeypatch):
     monkeypatch.delenv("GOOGLE_API_KEY")
     assert client.get("/health", headers=AUTH).status_code == 503

@@ -82,6 +82,8 @@ export function VoiceAssistant({ email }: { email: string }) {
   const sessionToken = useRef("");
   const sessionIceServers = useRef<RTCIceServer[]>([]);
   const pendingTextMessage = useRef<{ id: string; text: string; assistantId: number } | null>(null);
+  const voiceRecoveryAttempt = useRef(0);
+  const voiceRecoveryInProgress = useRef(false);
   const autoClosing = useRef(false);
   const farewellPlayed = useRef(false);
   const bookingComplete = useRef(false);
@@ -337,14 +339,36 @@ export function VoiceAssistant({ email }: { email: string }) {
     setError(""); setStatus("listening"); armIdleTimer();
   }
 
-  async function fallBackToText(message: string) {
+  async function switchToText(message = "") {
     setStatus("recovering"); setError(message); setSpeechPending(null); setInterim("");
     await release(true);
     modeRef.current = "text"; setMode("text"); setStatus("listening");
   }
 
-  async function start(startMode: Mode = modeRef.current, firstText?: string) {
+  async function recoverVoice(message: string) {
+    if (voiceRecoveryInProgress.current) return;
+    voiceRecoveryInProgress.current = true;
+    const nextAttempt = voiceRecoveryAttempt.current + 1;
+    try {
+      if (nextAttempt > 1) {
+        setError("The voice connection is unavailable right now. Please end this call and try again shortly.");
+        setStatus("error");
+        await release(true);
+        return;
+      }
+      const recoveryMode = modeRef.current === "text" ? "talk" : modeRef.current;
+      setStatus("recovering"); setError(message); setSpeechPending(null); setInterim("");
+      await release(true);
+      voiceRecoveryAttempt.current = nextAttempt;
+      await start(recoveryMode, undefined, nextAttempt);
+    } finally {
+      voiceRecoveryInProgress.current = false;
+    }
+  }
+
+  async function start(startMode: Mode = modeRef.current, firstText?: string, recoveryAttempt = 0) {
     if (client.current || status === "connecting") return;
+    if (recoveryAttempt === 0) voiceRecoveryAttempt.current = 0;
     const attempt = ++generation.current;
     const isCurrent = () => generation.current === attempt;
     const continuing = Boolean(conversationId.current);
@@ -391,7 +415,7 @@ export function VoiceAssistant({ email }: { email: string }) {
           onBotReady: () => {
             if (!isCurrent()) return;
             connected = true; clearTimeout(timeout); clearResponseTimers(); setStatus("listening");
-            void reportConnection("connected", statsTransport);
+            void reportConnection(recoveryAttempt ? "recovered" : "connected", statsTransport);
             if (startMode !== "talk") mic(false);
           },
           onBotStartedSpeaking: () => {
@@ -455,20 +479,20 @@ export function VoiceAssistant({ email }: { email: string }) {
             if (!isCurrent()) return;
             clearTimeout(timeout);
             void reportConnection("disconnected", statsTransport);
-            if (connected) void fallBackToText("Voice disconnected. You can continue here by typing.");
-            else { setError("The conversation couldn’t start. Please try again or email the studio."); setStatus("error"); void release(); }
+            void recoverVoice(connected
+              ? "Voice disconnected. Restoring the same voice conversation…"
+              : "The first voice path did not connect. Trying the backup voice path…");
           },
           onError: () => {
             if (!isCurrent()) return;
             clearTimeout(timeout);
             void reportConnection("degraded", statsTransport);
-            void fallBackToText("Voice was interrupted. Your conversation is still available by text.");
+            void recoverVoice("Voice was interrupted. Restoring the same voice conversation…");
           },
           onDeviceError: () => {
             if (!isCurrent()) return;
-            void fallBackToText(
-              "Microphone access is unavailable. You can type instead, or allow microphone access in your browser."
-            );
+            setError("Microphone access is unavailable. Allow microphone access and try the voice call again.");
+            setStatus("error"); void release(true);
           },
           onAvailableMicsUpdated: (devices) => { if (isCurrent()) setMics(devices); },
           onMicUpdated: (device) => {
@@ -510,7 +534,7 @@ export function VoiceAssistant({ email }: { email: string }) {
       };
       timeout = setTimeout(() => {
         if (!isCurrent()) return;
-        void fallBackToText("Voice could not connect in time. You can continue by typing.");
+        void recoverVoice("Voice could not connect in time. Trying the backup voice path…");
       }, 20000);
       recoveryTimer.current = setTimeout(() => {
         if (isCurrent()) setStatus("recovering");
@@ -520,16 +544,21 @@ export function VoiceAssistant({ email }: { email: string }) {
         channel: startMode === "talk" ? "voice" : startMode === "hold" ? "push_to_talk" : "text",
         conversation_id: conversationId.current,
         session_token: sessionToken.current,
+        recovery_attempt: recoveryAttempt,
       } } });
       if (!isCurrent()) return;
-      if (firstText) { await fallBackToText(""); await sendText(firstText); setDraft(""); }
+      if (firstText) { await switchToText(); await sendText(firstText); setDraft(""); }
     } catch (cause) {
       if (!isCurrent()) return;
       clearTimeout(timeout);
-      setError(cause instanceof Error && cause.name === "NotAllowedError"
-        ? "Microphone access was declined. Choose Type to chat without a microphone, or allow access in your browser."
-        : "Our assistant couldn’t connect. Please try again or email the studio.");
-      setStatus("error"); await release();
+      if (!(cause instanceof Error && cause.name === "NotAllowedError") && recoveryAttempt === 0) {
+        await recoverVoice("The first voice path failed. Trying the backup voice path…");
+      } else {
+        setError(cause instanceof Error && cause.name === "NotAllowedError"
+          ? "Microphone access was declined. Allow it in your browser and try the voice call again."
+          : "The voice connection is unavailable right now. Please try the call again shortly.");
+        setStatus("error"); await release(true);
+      }
     }
   }
 
@@ -539,7 +568,7 @@ export function VoiceAssistant({ email }: { email: string }) {
     if (!text || sending || status === "connecting") return;
     setSending(true); setError("");
     try {
-      if (client.current) await fallBackToText("");
+      if (client.current) await switchToText();
       if (conversationId.current) { await sendText(text); setDraft(""); }
       else await start("text", text);
     } catch { setError("Your message couldn’t be sent. Please try again."); }

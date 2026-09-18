@@ -1,4 +1,4 @@
-"""Reliable HTTP text fallback for conversations whose Live session is unavailable."""
+"""Reliable HTTP chat for visitors who explicitly choose typed conversation."""
 
 from __future__ import annotations
 

@@ -67,10 +67,14 @@ environment values; production rendering also needs them at build time.
 - Open mic, push-to-talk and typing share one session and history. Typing can start
   without requesting microphone permission. Microphone selection and a separate
   assistant-audio mute are available.
-- Production voice defaults to `gemini-3.8-live`. The independent HTTP text fallback
-  uses `gemini-3.1-flash-lite` with minimal thinking for its higher free request
-  allowance and low latency. Typed responses stream as NDJSON and use stable message
-  IDs, so a retry cannot silently lose a later message or execute a booking twice.
+- Production voice defaults to `gemini-3.8-live`. If that Live session fails, the
+  coordinator makes one voice-to-voice recovery attempt with
+  `gemini-3.1-flash-live-preview`, the same `Aoede` voice, the same prompt and tools,
+  and restored completed conversation history. It never changes a voice call into text.
+- Visitors can separately choose Type mode. It uses `gemini-3.1-flash-lite` with
+  minimal thinking for its higher free request allowance and low latency. Typed
+  responses stream as NDJSON and use stable message IDs, so a retry cannot silently
+  lose a later message or execute a booking twice.
 - The scripted opening is claimed atomically in the database. Reconnects, duplicate
   ready events, voice-to-text recovery, and an already-started typed conversation cannot
   replay it. Interrupted assistant turns remain distinct from completed turns.
@@ -82,9 +86,10 @@ environment values; production rendering also needs them at build time.
   dialogue is disabled for the reliability baseline. The UI
   immediately shows listening/transcribing feedback; Gemini Live still supplies the
   authoritative user transcript, so the final text can arrive after the voice turn.
-- A Gemini `1007` audio-configuration rejection permanently ends that Live session.
-  The browser preserves the conversation and changes to HTTP text instead of repeatedly
-  reconnecting the same rejected configuration.
+- A Gemini `1007` audio-configuration rejection permanently ends that provider session.
+  The coordinator restores one replacement Live session instead of reconnecting the
+  rejected configuration. If both voice models fail, it reports a voice outage and ends
+  cleanly; it never substitutes typed output or a different TTS personality.
 - Closing the dialog, ending, connection failure and unmounting stop local audio.
   Push-to-talk also mutes on pointer release, keyboard release, blur and visibility change.
 - The sales conversation is deliberately limited to voice agents and custom CRM or

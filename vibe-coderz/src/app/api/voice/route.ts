@@ -38,6 +38,7 @@ async function forward(request: NextRequest) {
         greet: payload.requestData?.greet !== false,
         conversation_id: payload.requestData?.conversation_id,
         session_token: payload.requestData?.session_token,
+        recovery_attempt: payload.requestData?.recovery_attempt === 1 ? 1 : 0,
         channel: ["voice", "push_to_talk", "text"].includes(payload.requestData?.channel)
           ? payload.requestData.channel : "voice",
         studio_knowledge: {
