@@ -27,12 +27,16 @@ logger.remove()
 logger.add(sys.stderr, level="WARNING", filter=lambda record: record["level"].name == "WARNING")
 # Preserve failure locations without logging provider payloads or transcripts.
 def error_location_only(record):
+    exception = record["exception"]
+    exception_type = getattr(getattr(exception, "type", None), "__name__", "unknown")
+    record["extra"]["exception_type"] = exception_type
     record["exception"] = None
     return True
 
 
 logger.add(sys.stderr, level="ERROR", filter=error_location_only,
-           format="{time} | {level} | {name}:{function}:{line} | Voice pipeline error",
+           format=("{time} | {level} | {name}:{function}:{line} | "
+                   "Voice pipeline error type={extra[exception_type]}"),
            backtrace=False, diagnose=False)
 logger.add(
     sys.stdout,
