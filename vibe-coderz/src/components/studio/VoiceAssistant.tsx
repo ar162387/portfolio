@@ -69,6 +69,8 @@ export function VoiceAssistant({ email }: { email: string }) {
   const generation = useRef(0);
   const messageId = useRef(0);
   const replyId = useRef<number | null>(null);
+  const assistantTurnId = useRef("");
+  const assistantTurnText = useRef("");
   const transcript = useRef<HTMLDivElement>(null);
   const wantedMic = useRef(false);
   const modeRef = useRef<Mode>("talk");
@@ -282,6 +284,24 @@ export function VoiceAssistant({ email }: { email: string }) {
     }).catch(() => {});
   }
 
+  function persistAssistantTurn(interrupted = false) {
+    const text = assistantTurnText.current.trim();
+    const messageId = assistantTurnId.current;
+    assistantTurnText.current = "";
+    assistantTurnId.current = "";
+    if (!text || !messageId || !conversationId.current || !sessionToken.current) return;
+    void fetch("/api/voice/transcript", {
+      method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
+      body: JSON.stringify({
+        conversationId: conversationId.current,
+        sessionToken: sessionToken.current,
+        messageId,
+        text,
+        interrupted,
+      }),
+    }).catch(() => {});
+  }
+
   async function sendText(text: string) {
     clearResponseTimers();
     await createSession("text");
@@ -448,11 +468,24 @@ export function VoiceAssistant({ email }: { email: string }) {
             if (!isCurrent()) return;
             setSpeechPending("transcribing");
           },
-          onBotLlmStarted: () => { if (isCurrent()) replyId.current = null; },
-          onBotLlmStopped: () => { if (isCurrent()) replyId.current = null; },
+          onBotLlmStarted: () => {
+            if (!isCurrent()) return;
+            persistAssistantTurn(true);
+            clearResponseTimers();
+            replyId.current = null;
+            assistantTurnId.current = `voice-assistant:${crypto.randomUUID()}`;
+            assistantTurnText.current = "";
+          },
+          onBotLlmStopped: () => {
+            if (!isCurrent()) return;
+            persistAssistantTurn(false);
+            replyId.current = null;
+          },
           // Model text arrives first. Playback-aligned TTS events advance the highlight.
           onBotLlmText: (data) => {
             if (!isCurrent() || !data.text) return;
+            clearResponseTimers();
+            assistantTurnText.current += data.text;
             if (bookingComplete.current) bookingConfirmationStarted.current = true;
             const id = replyId.current ?? ++messageId.current;
             replyId.current = id;
@@ -463,6 +496,7 @@ export function VoiceAssistant({ email }: { email: string }) {
           },
           onBotTtsText: (data) => {
             if (!isCurrent() || !data.text) return;
+            clearResponseTimers();
             const id = replyId.current;
             setMessages((previous) => previous.map((m) => m.id === id
               ? { ...m, spoken: Math.min(m.text.length, m.spoken + data.text.length) } : m));
@@ -477,6 +511,7 @@ export function VoiceAssistant({ email }: { email: string }) {
           },
           onDisconnected: () => {
             if (!isCurrent()) return;
+            persistAssistantTurn(true);
             clearTimeout(timeout);
             void reportConnection("disconnected", statsTransport);
             void recoverVoice(connected
@@ -485,6 +520,7 @@ export function VoiceAssistant({ email }: { email: string }) {
           },
           onError: () => {
             if (!isCurrent()) return;
+            persistAssistantTurn(true);
             clearTimeout(timeout);
             void reportConnection("degraded", statsTransport);
             void recoverVoice("Voice was interrupted. Restoring the same voice conversation…");
@@ -517,7 +553,6 @@ export function VoiceAssistant({ email }: { email: string }) {
               setInterim(""); setSpeechPending(null);
               setStatus("processing");
               delayTimer.current = setTimeout(() => setError("This is taking a little longer than usual."), 8000);
-              recoveryTimer.current = setTimeout(() => setStatus("recovering"), 15000);
             } else {
               setInterim(data.text); setSpeechPending("transcribing");
             }

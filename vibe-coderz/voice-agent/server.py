@@ -104,6 +104,8 @@ server_turn = _turn_server(
 )
 handler = SmallWebRTCRequestHandler(ice_servers=[server_turn] if server_turn else None)
 sessions: dict[str, asyncio.Task] = {}
+voice_conversations: dict[str, tuple[str, asyncio.Task, object]] = {}
+voice_handoff_locks: dict[str, asyncio.Lock] = {}
 conversation_locks: dict[str, asyncio.Lock] = {}
 pending = 0
 starts: deque[float] = deque()
@@ -150,18 +152,13 @@ async def serve_session(connection, body):
         greet = await asyncio.to_thread(
             claim_greeting, conversation_id, body.greet or not completed_history
         )
-        if body.recovery_attempt and not completed_history:
-            greet = True
-        resume = bool(
-            body.recovery_attempt
-            and completed_history
-            and completed_history[-1].get("role") == "user"
-        )
-        model = (
-            os.getenv("GEMINI_LIVE_FALLBACK_MODEL", "gemini-3.1-flash-live-preview")
-            if body.recovery_attempt
-            else os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live")
-        )
+        # A recovery restores context and waits for fresh speech. The prior
+        # last-user heuristic could regenerate an answer that had already played
+        # when assistant transcript persistence lagged behind audio.
+        resume = False
+        # Keep the same model and configured voice across a transport recovery so
+        # the visitor does not hear a different persona midway through the call.
+        model = os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live")
         worker = asyncio.create_task(run_bot(
             connection, body.studio_knowledge.model_dump(), greet=greet,
             conversation_id=conversation_id, history=history, model=model, resume=resume,
@@ -185,6 +182,10 @@ async def serve_session(connection, body):
         finally:
             # Recording failures must never leave the capacity slot occupied.
             sessions.pop(connection.pc_id, None)
+            if conversation_id:
+                active = voice_conversations.get(conversation_id)
+                if active and active[0] == connection.pc_id:
+                    voice_conversations.pop(conversation_id, None)
             # A browser can continue this same conversation over the independent
             # HTTP text path after voice transport loss.
 
@@ -217,6 +218,31 @@ async def lifespan(_app):
     await handler.close()
 
 
+async def _start_voice_session(connection, body):
+    """Atomically replace any older media/model session for this conversation."""
+    conversation_id = body.conversation_id
+    handoff_lock = (
+        voice_handoff_locks.setdefault(conversation_id, asyncio.Lock())
+        if conversation_id else lock
+    )
+    async with handoff_lock:
+        if conversation_id:
+            previous = voice_conversations.get(conversation_id)
+            if previous and previous[0] != connection.pc_id:
+                previous_pc_id, previous_task, previous_connection = previous
+                previous_task.cancel()
+                try:
+                    await previous_connection.disconnect()
+                except Exception:
+                    pass
+                await asyncio.gather(previous_task, return_exceptions=True)
+                sessions.pop(previous_pc_id, None)
+        task = asyncio.create_task(serve_session(connection, body))
+        sessions[connection.pc_id] = task
+        if conversation_id:
+            voice_conversations[conversation_id] = (connection.pc_id, task, connection)
+        # Also release tasks cancelled before their coroutine first runs.
+        task.add_done_callback(lambda _: sessions.pop(connection.pc_id, None))
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
 
 
@@ -285,6 +311,14 @@ class TextMessage(BaseModel):
     message_id: str = Field(min_length=8, max_length=80)
     text: str = Field(min_length=1, max_length=2000)
     studio_knowledge: Knowledge
+
+
+class VoiceTranscript(BaseModel):
+    conversation_id: str = Field(max_length=36)
+    session_token: str = Field(max_length=500)
+    message_id: str = Field(min_length=8, max_length=80)
+    text: str = Field(min_length=1, max_length=12_000)
+    interrupted: bool = False
 
 
 def _session_token(conversation_id: str, ttl_seconds: int = 60 * 60) -> str:
@@ -423,6 +457,28 @@ async def record_connection_diagnostic(body: ConnectionDiagnostic):
         jitter_ms=body.jitter_ms,
     ).info("voice_connection")
     return {"ok": True}
+
+
+@app.post("/transcript", dependencies=[Depends(authenticate)])
+async def record_voice_transcript(body: VoiceTranscript):
+    """Persist the browser-observed assistant turn if provider aggregation lags."""
+    if not _verify_session_token(body.conversation_id, body.session_token):
+        raise HTTPException(401, "Invalid session")
+    if not await asyncio.to_thread(conversation_exists, body.conversation_id):
+        raise HTTPException(404, "Conversation not found")
+    existing = await asyncio.to_thread(conversation_messages, body.conversation_id)
+    if existing and existing[-1].get("role") == "assistant" and existing[-1].get("text") == body.text.strip():
+        return {"ok": True, "saved": False}
+    saved = await asyncio.to_thread(
+        add_message,
+        body.conversation_id,
+        "assistant",
+        body.text,
+        message_id=body.message_id,
+        delivery_state="interrupted" if body.interrupted else "completed",
+        interrupted=body.interrupted,
+    )
+    return {"ok": True, "saved": saved}
 
 
 @app.post("/message", dependencies=[Depends(authenticate)])
@@ -588,7 +644,11 @@ async def offer(body: Offer):
             now = time.monotonic()
             while starts and starts[0] < now - 60:
                 starts.popleft()
-            if len(sessions) + pending >= int(os.getenv("MAX_VOICE_SESSIONS", "2")):
+            replacing = bool(
+                body.conversation_id and body.conversation_id in voice_conversations
+            )
+            active_slots = len(sessions) - (1 if replacing else 0)
+            if active_slots + pending >= int(os.getenv("MAX_VOICE_SESSIONS", "2")):
                 raise HTTPException(429, "Assistant is busy", headers={"Retry-After": "15"})
             if len(starts) >= 10:
                 raise HTTPException(429, "Too many connection attempts", headers={"Retry-After": "60"})
@@ -596,10 +656,7 @@ async def offer(body: Offer):
             pending += 1
 
     async def connected(connection):
-        task = asyncio.create_task(serve_session(connection, body))
-        sessions[connection.pc_id] = task
-        # Also release tasks cancelled before their coroutine first runs.
-        task.add_done_callback(lambda _: sessions.pop(connection.pc_id, None))
+        await _start_voice_session(connection, body)
 
     try:
         return await handler.handle_web_request(

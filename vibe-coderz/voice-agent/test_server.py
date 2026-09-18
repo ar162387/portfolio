@@ -28,6 +28,8 @@ def client(monkeypatch):
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
     server.starts.clear()
     server.sessions.clear()
+    server.voice_conversations.clear()
+    server.voice_handoff_locks.clear()
     server.pending = 0
     with TestClient(server.app) as test_client:
         yield test_client
@@ -53,6 +55,24 @@ def test_private_ephemeral_turn_credentials(client, monkeypatch):
         "turn:voice.example.com:3478?transport=udp",
         "turn:voice.example.com:3478?transport=tcp",
     ]
+
+
+def test_browser_observed_assistant_transcript_is_idempotent(client):
+    credentials = client.post("/session", json={"channel": "voice"}, headers=AUTH).json()
+    payload = {
+        "conversation_id": credentials["conversation_id"],
+        "session_token": credentials["session_token"],
+        "message_id": "voice-assistant:test-turn",
+        "text": "How many enquiries do you receive each week?",
+        "interrupted": False,
+    }
+    first = client.post("/transcript", json=payload, headers=AUTH)
+    duplicate = client.post("/transcript", json=payload, headers=AUTH)
+
+    assert first.json() == {"ok": True, "saved": True}
+    assert duplicate.json() == {"ok": True, "saved": False}
+    messages = conversation_messages(credentials["conversation_id"])
+    assert [item["text"] for item in messages] == [payload["text"]]
 
 
 def test_session_and_all_typed_messages_are_delivered_once(client, monkeypatch):
@@ -136,7 +156,7 @@ def test_audio_configuration_error_is_permanent():
     asyncio.run(check())
 
 
-def test_voice_recovery_restores_history_and_uses_voice_fallback(monkeypatch):
+def test_voice_recovery_restores_history_without_replaying_last_turn(monkeypatch):
     connection = Mock(pc_id="recovery", disconnect=AsyncMock(), is_connected=Mock(return_value=True))
     history = [{
         "role": "user", "text": "I am a dentist", "message_id": "voice-user",
@@ -147,15 +167,74 @@ def test_voice_recovery_restores_history_and_uses_voice_fallback(monkeypatch):
     monkeypatch.setattr(server, "conversation_messages", Mock(return_value=history))
     monkeypatch.setattr(server, "claim_greeting", Mock(return_value=False))
     monkeypatch.setattr(server, "run_bot", bot)
-    monkeypatch.setenv("GEMINI_LIVE_FALLBACK_MODEL", "gemini-3.1-flash-live-preview")
+    monkeypatch.setenv("GEMINI_LIVE_MODEL", "gemini-3.8-live")
     offer = server.Offer(**{**OFFER, "recovery_attempt": 1, "greet": False})
 
     asyncio.run(server.serve_session(connection, offer))
 
-    assert bot.await_args.kwargs["model"] == "gemini-3.1-flash-live-preview"
+    assert bot.await_args.kwargs["model"] == "gemini-3.8-live"
     assert bot.await_args.kwargs["history"] == history
-    assert bot.await_args.kwargs["resume"] is True
+    assert bot.await_args.kwargs["resume"] is False
     assert bot.await_args.kwargs["greet"] is False
+
+
+def test_voice_recovery_without_saved_turns_does_not_replay_greeting(monkeypatch):
+    connection = Mock(pc_id="recovery-empty", disconnect=AsyncMock(), is_connected=Mock(return_value=True))
+    bot = AsyncMock()
+    monkeypatch.setattr(server, "attach_transport", Mock(return_value=True))
+    monkeypatch.setattr(server, "conversation_messages", Mock(return_value=[]))
+    monkeypatch.setattr(server, "claim_greeting", Mock(return_value=False))
+    monkeypatch.setattr(server, "run_bot", bot)
+    offer = server.Offer(**{
+        **OFFER,
+        "conversation_id": "conversation",
+        "session_token": "token",
+        "recovery_attempt": 1,
+        "greet": False,
+    })
+    monkeypatch.setattr(server, "_verify_session_token", Mock(return_value=True))
+
+    asyncio.run(server.serve_session(connection, offer))
+
+    assert bot.await_args.kwargs["greet"] is False
+    assert bot.await_args.kwargs["resume"] is False
+
+
+def test_replacement_voice_session_cancels_previous_before_start(monkeypatch):
+    stopped = asyncio.Event()
+
+    async def running_session(connection, _body):
+        try:
+            await asyncio.Event().wait()
+        finally:
+            stopped.set()
+
+    monkeypatch.setattr(server, "serve_session", running_session)
+    body = server.Offer(**{
+        **OFFER,
+        "conversation_id": "conversation",
+        "session_token": "token",
+    })
+    first = Mock(pc_id="first", disconnect=AsyncMock())
+    second = Mock(pc_id="second", disconnect=AsyncMock())
+
+    async def check():
+        server.sessions.clear()
+        server.voice_conversations.clear()
+        server.voice_handoff_locks.clear()
+        await server._start_voice_session(first, body)
+        first_task = server.voice_conversations["conversation"][1]
+        await asyncio.sleep(0)
+        await server._start_voice_session(second, body)
+        assert first_task.cancelled()
+        assert stopped.is_set()
+        first.disconnect.assert_awaited_once()
+        assert list(server.sessions) == ["second"]
+        second_task = server.voice_conversations["conversation"][1]
+        second_task.cancel()
+        await asyncio.gather(second_task, return_exceptions=True)
+
+    asyncio.run(check())
 
 
 def test_missing_key(client, monkeypatch):

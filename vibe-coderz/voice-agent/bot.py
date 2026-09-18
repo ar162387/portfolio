@@ -183,6 +183,10 @@ def create_worker(
     llm = ReliableGeminiLiveService(
         api_key=os.environ["GOOGLE_API_KEY"],
         tools=tools,
+        # The coordinator below owns the one-time opening. Leaving this at the
+        # Pipecat default can run once while seeding context and again when the
+        # RTVI client-ready event queues LLMRunFrame.
+        inference_on_context_initialization=False,
         settings=GeminiLiveLLMService.Settings(
             model=model or os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live"),
             voice=os.getenv("GEMINI_VOICE", "Aoede"),
@@ -229,7 +233,9 @@ def create_worker(
     @worker.rtvi.event_handler("on_client_ready")
     async def client_ready(_rtvi):
         nonlocal greeting_queued
-        if (greet or resume) and not greeting_queued:
+        # Recovery reconnects the media path only. Automatically running the model
+        # here can regenerate the last answer when persistence trails playback.
+        if greet and not greeting_queued:
             greeting_queued = True
             await worker.queue_frames([LLMRunFrame()])
 
@@ -242,22 +248,40 @@ def create_worker(
 
         @aggregators.user().event_handler("on_user_turn_message_added")
         async def user_message_added(_aggregator, message):
-            await asyncio.to_thread(
-                add_message, conversation_id, "user", message.content, message.timestamp,
-                message_id=f"voice:{conversation_id}:user:{message.timestamp or uuid.uuid4()}",
-            )
+            try:
+                await asyncio.to_thread(
+                    add_message, conversation_id, "user", message.content, message.timestamp,
+                    message_id=f"voice:{conversation_id}:user:{message.timestamp or uuid.uuid4()}",
+                )
+            except Exception as exc:
+                # Transcript storage must never break the audio pipeline. Do not log
+                # the exception text because database errors can include transcript data.
+                logger.bind(
+                    diagnostic=True,
+                    event="voice_transcript_persist_failed",
+                    role="user",
+                    error_type=type(exc).__name__,
+                ).info("voice_transcript")
 
         @aggregators.assistant().event_handler("on_assistant_turn_stopped")
         async def assistant_turn_stopped(_aggregator, message):
             if message.content:
                 if not message.interrupted:
                     llm.mark_successful_turn()
-                await asyncio.to_thread(
-                    add_message, conversation_id, "assistant", message.content, message.timestamp,
-                    message_id=f"voice:{conversation_id}:assistant:{message.timestamp or uuid.uuid4()}",
-                    delivery_state="interrupted" if message.interrupted else "completed",
-                    interrupted=message.interrupted,
-                )
+                try:
+                    await asyncio.to_thread(
+                        add_message, conversation_id, "assistant", message.content, message.timestamp,
+                        message_id=f"voice:{conversation_id}:assistant:{message.timestamp or uuid.uuid4()}",
+                        delivery_state="interrupted" if message.interrupted else "completed",
+                        interrupted=message.interrupted,
+                    )
+                except Exception as exc:
+                    logger.bind(
+                        diagnostic=True,
+                        event="voice_transcript_persist_failed",
+                        role="assistant",
+                        error_type=type(exc).__name__,
+                    ).info("voice_transcript")
 
     return worker
 
