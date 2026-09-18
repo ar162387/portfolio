@@ -6,7 +6,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 import server
-from bot import ReliableGeminiLiveService, _env_seconds, create_worker, system_prompt
+from bot import (
+    ReliableGeminiLiveService,
+    _env_seconds,
+    _turn_message_id,
+    create_worker,
+    system_prompt,
+)
 from dashboard_store import claim_greeting, conversation_messages
 from calendar_tools import (
     CalConfig,
@@ -195,6 +201,14 @@ def test_suppressed_opening_prompt_answers_first_typed_message_directly():
 
     assert "opening is suppressed" in prompt
     assert "Never say or paraphrase" in prompt
+
+
+def test_voice_turn_message_ids_are_stable_and_fit_database_column():
+    first = _turn_message_id("conversation-id", "assistant", "2026-09-18T21:28:22.653Z")
+    second = _turn_message_id("conversation-id", "assistant", "2026-09-18T21:28:22.653Z")
+
+    assert first == second
+    assert len(first) <= 80
 
 
 def test_replacement_voice_session_cancels_previous_before_start(monkeypatch):

@@ -1,6 +1,7 @@
 """The studio's focused sales agent: native Gemini audio and ephemeral transcripts."""
 
 import asyncio
+import hashlib
 import json
 import os
 import uuid
@@ -195,6 +196,13 @@ def _env_seconds(name: str, default: float, minimum: float) -> float:
         return default
 
 
+def _turn_message_id(conversation_id: str, role: str, timestamp: str | None) -> str:
+    """Create a stable provider-turn ID that fits the database's 80-char column."""
+    source = timestamp or uuid.uuid4().hex
+    digest = hashlib.sha256(f"{conversation_id}\0{role}\0{source}".encode()).hexdigest()[:32]
+    return f"voice:{role}:{digest}"
+
+
 def create_worker(
     connection: SmallWebRTCConnection,
     knowledge: dict,
@@ -284,7 +292,7 @@ def create_worker(
             try:
                 await asyncio.to_thread(
                     add_message, conversation_id, "user", message.content, message.timestamp,
-                    message_id=f"voice:{conversation_id}:user:{message.timestamp or uuid.uuid4()}",
+                    message_id=_turn_message_id(conversation_id, "user", message.timestamp),
                 )
             except Exception as exc:
                 # Transcript storage must never break the audio pipeline. Do not log
@@ -304,7 +312,7 @@ def create_worker(
                 try:
                     await asyncio.to_thread(
                         add_message, conversation_id, "assistant", message.content, message.timestamp,
-                        message_id=f"voice:{conversation_id}:assistant:{message.timestamp or uuid.uuid4()}",
+                        message_id=_turn_message_id(conversation_id, "assistant", message.timestamp),
                         delivery_state="interrupted" if message.interrupted else "completed",
                         interrupted=message.interrupted,
                     )
