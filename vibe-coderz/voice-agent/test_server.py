@@ -190,6 +190,13 @@ def test_first_typed_turn_does_not_trigger_opening_greeting(monkeypatch):
     assert bot.await_args.kwargs["greet"] is False
 
 
+def test_suppressed_opening_prompt_answers_first_typed_message_directly():
+    prompt = system_prompt(OFFER["studio_knowledge"], opening_required=False)
+
+    assert "opening is suppressed" in prompt
+    assert "Never say or paraphrase" in prompt
+
+
 def test_replacement_voice_session_cancels_previous_before_start(monkeypatch):
     stopped = asyncio.Event()
 

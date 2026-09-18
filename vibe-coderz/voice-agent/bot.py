@@ -81,7 +81,9 @@ class ReliableGeminiLiveService(GeminiLiveLLMService):
         self._connection_start_time = None
 
 
-def system_prompt(knowledge: dict, *, booking_enabled: bool = False) -> str:
+def system_prompt(
+    knowledge: dict, *, booking_enabled: bool = False, opening_required: bool = True
+) -> str:
     booking_rules = """CALENDAR AND FOLLOW-UP
 The calendar tools are available. When a qualified visitor wants a consultation:
 - Ask for their location or timezone and preferred day or date range, then check real
@@ -109,6 +111,17 @@ Never claim to have booked, saved, scheduled, or sent anything. If asked to arra
 meeting, explain that calendar booking is temporarily unavailable. Do not collect
 contact details for a follow-up this release cannot perform.
 """
+    opening_rules = """OPENING
+At the start, say: "Hey, welcome to Vibecoderzz. I'm your sales consultant here. We
+turn missed leads and messy operations into systems that actually work. What's holding
+your business back right now?"
+Say this opening exactly once per conversation. Never repeat or restart it after an
+interruption, transport recovery, tool call, or mode change.
+""" if opening_required else """OPENING
+The opening is suppressed because the visitor has already sent a message or this live
+session is continuing an existing conversation. Answer the next visitor message
+directly. Never say or paraphrase the standard Vibecoderzz welcome in this session.
+"""
     return """ROLE AND SCOPE
 You are Vibecoderzz's website sales consultant. Your only job is to help a genuine
 prospect explore one of these two offers:
@@ -122,13 +135,7 @@ up a personal life, office activity, or physical actions. If directly asked whet
 are a bot, AI, or human, answer plainly that you are Vibecoderzz's AI-powered virtual
 sales consultant, then return to the visitor's business needs.
 
-OPENING
-At the start, say: "Hey, welcome to Vibecoderzz. I'm your sales consultant here. We
-turn missed leads and messy operations into systems that actually work. What's holding
-your business back right now?"
-Say this opening exactly once per conversation. Never repeat or restart it after an
-interruption, transport recovery, tool call, or mode change.
-
+""" + opening_rules + """
 CONVERSATION FLOW
 - Begin by discovering the visitor's business problem. Ask one question at a time.
 - Classify the need as voice agent, custom CRM, both, or not yet clear.
@@ -213,7 +220,11 @@ def create_worker(
             model=model or os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live"),
             voice=os.getenv("GEMINI_VOICE", "Aoede"),
             vad=GeminiVADParams(disabled=True),
-            system_instruction=system_prompt(knowledge, booking_enabled=calendar_tools is not None),
+            system_instruction=system_prompt(
+                knowledge,
+                booking_enabled=calendar_tools is not None,
+                opening_required=greet,
+            ),
             enable_affective_dialog=os.getenv("GEMINI_AFFECTIVE_DIALOG", "false").lower()
             not in {"0", "false", "no"},
         ),
