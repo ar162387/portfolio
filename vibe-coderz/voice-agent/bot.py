@@ -8,6 +8,7 @@ import uuid
 from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
+from pipecat.frames.frames import LLMRunFrame
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.worker import PipelineParams, PipelineWorker
@@ -182,9 +183,6 @@ def create_worker(
     llm = ReliableGeminiLiveService(
         api_key=os.environ["GOOGLE_API_KEY"],
         tools=tools,
-        # Seed inference is the single owner of the opening. Recovery sets
-        # greet=False, so restored context never regenerates a prior answer.
-        inference_on_context_initialization=greet,
         settings=GeminiLiveLLMService.Settings(
             model=model or os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live"),
             voice=os.getenv("GEMINI_VOICE", "Aoede"),
@@ -226,6 +224,17 @@ def create_worker(
         idle_timeout_secs=None,
         enable_rtvi=True,
     )
+    greeting_queued = False
+
+    @worker.rtvi.event_handler("on_client_ready")
+    async def client_ready(_rtvi):
+        nonlocal greeting_queued
+        # LLMRunFrame sends the seeded opening context. It is strictly limited
+        # to a newly claimed greeting and is never queued during recovery.
+        if greet and not greeting_queued:
+            greeting_queued = True
+            await worker.queue_frames([LLMRunFrame()])
+
     @transport.event_handler("on_client_disconnected")
     async def client_disconnected(_transport, _client):
         await worker.cancel()
