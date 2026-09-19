@@ -64,6 +64,7 @@ from pipecat.transports.smallwebrtc.request_handler import (  # noqa: E402
     IceCandidate, SmallWebRTCPatchRequest, SmallWebRTCRequest, SmallWebRTCRequestHandler,
 )
 from pipecat.transports.smallwebrtc.connection import IceServer  # noqa: E402
+from pipecat.frames.frames import LLMMessagesAppendFrame  # noqa: E402
 
 
 def _turn_credential(ttl_seconds: int, label: str) -> tuple[str, str] | None:
@@ -101,6 +102,8 @@ server_turn = _turn_server(
 handler = SmallWebRTCRequestHandler(ice_servers=[server_turn] if server_turn else None)
 sessions: dict[str, asyncio.Task] = {}
 voice_conversations: dict[str, tuple[str, asyncio.Task, object]] = {}
+live_workers: dict[str, tuple[str, object]] = {}
+typed_input_ids: dict[str, deque[str]] = {}
 voice_handoff_locks: dict[str, asyncio.Lock] = {}
 pending = 0
 starts: deque[float] = deque()
@@ -151,9 +154,13 @@ async def serve_session(connection, body):
         # Keep the same model and configured voice across a transport recovery so
         # the visitor does not hear a different persona midway through the call.
         model = os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live")
+        def worker_ready(pipeline_worker):
+            live_workers[conversation_id] = (connection.pc_id, pipeline_worker)
+
         worker = asyncio.create_task(run_bot(
             connection, body.studio_knowledge.model_dump(), greet=greet,
             conversation_id=conversation_id, history=history, model=model, resume=resume,
+            worker_ready=worker_ready,
         ))
         watcher = asyncio.create_task(watch_connection(connection))
         children = [worker, watcher]
@@ -178,8 +185,9 @@ async def serve_session(connection, body):
                 active = voice_conversations.get(conversation_id)
                 if active and active[0] == connection.pc_id:
                     voice_conversations.pop(conversation_id, None)
-            # A browser can continue this same conversation over the independent
-            # HTTP text path after voice transport loss.
+                live = live_workers.get(conversation_id)
+                if live and live[0] == connection.pc_id:
+                    live_workers.pop(conversation_id, None)
 
 
 async def authenticate(authorization: str = Header(default="")):
@@ -305,6 +313,13 @@ class VoiceTranscript(BaseModel):
     interrupted: bool = False
 
 
+class VoiceInput(BaseModel):
+    conversation_id: str = Field(max_length=36)
+    session_token: str = Field(max_length=500)
+    message_id: str = Field(min_length=8, max_length=80)
+    text: str = Field(min_length=1, max_length=2_000)
+
+
 def _session_token(conversation_id: str, ttl_seconds: int = 60 * 60) -> str:
     expires = int(time.time()) + ttl_seconds
     nonce = secrets.token_urlsafe(12)
@@ -420,7 +435,50 @@ async def close_session(body: SessionEnd):
     if not _verify_session_token(body.conversation_id, body.session_token):
         raise HTTPException(401, "Invalid session")
     await asyncio.to_thread(end_conversation, body.conversation_id, body.reason)
+    typed_input_ids.pop(body.conversation_id, None)
     return {"ok": True}
+
+
+@app.post("/input", dependencies=[Depends(authenticate)])
+async def deliver_typed_input(body: VoiceInput):
+    """Reliably inject text into the active Gemini Live worker and acknowledge it."""
+    if not _verify_session_token(body.conversation_id, body.session_token):
+        raise HTTPException(401, "Invalid session")
+    text = body.text.strip()
+    if not text:
+        raise HTTPException(422, "Message is empty")
+
+    # The browser can reach this endpoint just before run_bot publishes its
+    # worker. Bound that race instead of rejecting a valid first typed turn.
+    live = live_workers.get(body.conversation_id)
+    for _ in range(20):
+        if live:
+            break
+        await asyncio.sleep(0.1)
+        live = live_workers.get(body.conversation_id)
+    if not live:
+        raise HTTPException(409, "Live voice session is unavailable")
+
+    message_ids = typed_input_ids.setdefault(body.conversation_id, deque(maxlen=100))
+    if body.message_id in message_ids:
+        return {"ok": True, "accepted": False}
+
+    _pc_id, worker = live
+    await worker.rtvi.interrupt_bot()
+    await worker.flush_pipeline()
+    await worker.queue_frames([
+        LLMMessagesAppendFrame(
+            messages=[{"role": "user", "content": text}],
+            run_llm=True,
+        )
+    ])
+    message_ids.append(body.message_id)
+    logger.bind(
+        diagnostic=True,
+        conversation_id=body.conversation_id,
+        event="typed_input_accepted",
+    ).info("voice_input")
+    return {"ok": True, "accepted": True}
 
 
 @app.post("/diagnostic", dependencies=[Depends(authenticate)])

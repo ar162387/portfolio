@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Keyboard, Mic, MicOff, PhoneOff, Send, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowUpRight, Mic, MicOff, PhoneOff, Send, Volume2, VolumeX, X } from "lucide-react";
 import type { PipecatClient } from "@pipecat-ai/client-js";
 import styles from "./voice-assistant.module.css";
 
 type Status = "idle" | "connecting" | "listening" | "processing" | "responding" | "recovering" | "speaking" | "ended" | "error";
-type Mode = "talk" | "hold" | "text";
+type Mode = "talk" | "hold";
 type Message = { id: number; role: "user" | "assistant"; text: string; spoken: number; time: string };
 const labels: Record<Status, string> = {
   idle: "A conversation starts here", connecting: "Connecting…", listening: "Listening to you",
@@ -71,6 +71,7 @@ export function VoiceAssistant({ email }: { email: string }) {
   const replyId = useRef<number | null>(null);
   const assistantTurnId = useRef("");
   const assistantTurnText = useRef("");
+  const typedTurn = useRef<{ id: string; text: string; appended: boolean } | null>(null);
   const transcript = useRef<HTMLDivElement>(null);
   const wantedMic = useRef(false);
   const modeRef = useRef<Mode>("talk");
@@ -173,6 +174,7 @@ export function VoiceAssistant({ email }: { email: string }) {
   async function release(preserveSession = false) {
     if (preserveSession) clearResponseTimers(); else clearVoiceTimers();
     autoClosing.current = false;
+    if (!preserveSession) typedTurn.current = null;
     bookingComplete.current = false; bookingConfirmationStarted.current = false;
     generation.current += 1;
     wantedMic.current = false;
@@ -302,18 +304,38 @@ export function VoiceAssistant({ email }: { email: string }) {
 
   async function sendText(text: string) {
     clearResponseTimers();
-    const current = client.current;
-    if (!current) throw new Error("Voice session unavailable");
-    appendUser(text);
+    if (!client.current || !conversationId.current || !sessionToken.current) {
+      throw new Error("Voice session unavailable");
+    }
+    const pending = typedTurn.current?.text === text
+      ? typedTurn.current
+      : { id: `voice-user:${crypto.randomUUID()}`, text, appended: false };
+    typedTurn.current = pending;
+    if (!pending.appended) {
+      appendUser(text);
+      pending.appended = true;
+    }
     setStatus("processing"); setSpeechPending(null); setInterim("");
     delayTimer.current = setTimeout(() => setError("This is taking a little longer than usual."), 8000);
     recoveryTimer.current = setTimeout(() => {
       setError("The voice reply stalled. Please try saying or sending that once more.");
-      setStatus("error");
+      // Keep the active call usable. The previous error state exposed a start
+      // button whose handler could not run while the existing client remained.
+      setStatus("listening");
     }, 15000);
-    // Keep typed input inside the active Gemini Live session. The reply is still
-    // produced by the configured native-audio model and the same selected voice.
-    await current.sendText(text, { run_immediately: true, audio_response: true });
+    const response = await fetch("/api/voice/input", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversationId: conversationId.current,
+        sessionToken: sessionToken.current,
+        messageId: pending.id,
+        text,
+      }),
+      signal: AbortSignal.timeout(8000),
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Typed message was not acknowledged");
   }
 
   async function recoverVoice(message: string) {
@@ -327,11 +349,10 @@ export function VoiceAssistant({ email }: { email: string }) {
         await release(true);
         return;
       }
-      const recoveryMode = modeRef.current === "text" ? "talk" : modeRef.current;
       setStatus("recovering"); setError(message); setSpeechPending(null); setInterim("");
       await release(true);
       voiceRecoveryAttempt.current = nextAttempt;
-      await start(recoveryMode, undefined, nextAttempt);
+      await start(modeRef.current, undefined, nextAttempt);
     } finally {
       voiceRecoveryInProgress.current = false;
     }
@@ -359,7 +380,7 @@ export function VoiceAssistant({ email }: { email: string }) {
       await closing.current;
       if (!isCurrent()) return;
       if (!window.isSecureContext) throw new Error("Voice needs HTTPS or localhost.");
-      const voiceConfig = await createSession(startMode === "talk" ? "voice" : startMode === "hold" ? "push_to_talk" : "text");
+      const voiceConfig = await createSession(startMode === "talk" ? "voice" : "push_to_talk");
       const [{ PipecatClient }, { ReliableSmallWebRTCTransport }, { default: Daily }] = await Promise.all([
         import("@pipecat-ai/client-js"), import("@/lib/reliable-small-webrtc"), import("@daily-co/daily-js"),
       ]);
@@ -420,6 +441,7 @@ export function VoiceAssistant({ email }: { email: string }) {
             replyId.current = null;
             assistantTurnId.current = `voice-assistant:${crypto.randomUUID()}`;
             assistantTurnText.current = "";
+            typedTurn.current = null;
           },
           onBotLlmStopped: () => {
             if (!isCurrent()) return;
@@ -521,7 +543,7 @@ export function VoiceAssistant({ email }: { email: string }) {
       }, 10000);
       await pc.connect({ webrtcRequestParams: { endpoint: "/api/voice", requestData: {
         greet: !continuing && !firstText,
-        channel: startMode === "talk" ? "voice" : startMode === "hold" ? "push_to_talk" : "text",
+        channel: startMode === "talk" ? "voice" : "push_to_talk",
         conversation_id: conversationId.current,
         session_token: sessionToken.current,
         recovery_attempt: recoveryAttempt,
@@ -548,9 +570,8 @@ export function VoiceAssistant({ email }: { email: string }) {
     if (!text || sending || status === "connecting") return;
     setSending(true); setError("");
     try {
-      modeRef.current = "text"; setMode("text"); mic(false);
       if (client.current) { await sendText(text); setDraft(""); }
-      else await start("text", text);
+      else await start(modeRef.current, text);
     } catch {
       clearResponseTimers();
       setStatus(client.current ? "listening" : "error");
@@ -562,7 +583,7 @@ export function VoiceAssistant({ email }: { email: string }) {
   function switchMode(next: Mode) {
     modeRef.current = next; setMode(next); setHolding(false); setError("");
     if (active && client.current) mic(next === "talk");
-    else if (conversationId.current && next !== "text") void start(next);
+    else if (conversationId.current) void start(next);
   }
 
   function hold(down: boolean) {
@@ -572,7 +593,7 @@ export function VoiceAssistant({ email }: { email: string }) {
 
   function close() { void end("client_ended"); dialog.current?.close(); }
   const statusLabel = status === "listening"
-    ? mode === "text" ? "Ready for your message" : mode === "hold" && !holding ? "Hold the button to speak" : muted ? "Microphone muted" : labels[status]
+    ? mode === "hold" && !holding ? "Hold the button to speak or type below" : muted ? "Microphone muted — you can still type" : labels[status]
     : labels[status];
 
   return (
@@ -591,7 +612,6 @@ export function VoiceAssistant({ email }: { email: string }) {
         <div className={styles.modes} role="group" aria-label="Conversation input">
           <button aria-pressed={mode === "talk"} disabled={status === "connecting"} onClick={() => switchMode("talk")}><Mic size={15} /> Open mic</button>
           <button aria-pressed={mode === "hold"} disabled={status === "connecting"} onClick={() => switchMode("hold")}><MicOff size={15} /> Push to talk</button>
-          <button aria-pressed={mode === "text"} disabled={status === "connecting"} onClick={() => switchMode("text")}><Keyboard size={15} /> Type</button>
         </div>
         <div className={styles.status} role="status"><span data-active={active} />{statusLabel}<button className={styles.sound} aria-label={sound ? "Mute assistant audio" : "Enable assistant audio"} aria-pressed={!sound} onClick={() => setSound(!sound)}>{sound ? <Volume2 size={15} /> : <VolumeX size={15} />}</button></div>
         <div className={styles.transcript} ref={transcript} role="log" aria-label="Conversation transcript" aria-live="polite" aria-relevant="additions text">
@@ -601,9 +621,9 @@ export function VoiceAssistant({ email }: { email: string }) {
         {error && <p className={styles.error} role="alert">{error}</p>}
         {needsPlayback && <button className={styles.playback} onClick={() => { void audio.current?.play().then(() => setNeedsPlayback(false)).catch(() => {}); }}><Volume2 size={16} /> Tap to hear the assistant</button>}
         <form className={styles.composer} onSubmit={submit}><label className={styles.srOnly} htmlFor="studio-message">Your message</label><input id="studio-message" value={draft} maxLength={2000} onChange={(event) => setDraft(event.target.value)} placeholder="Type a message…" autoComplete="off" /><button aria-label="Send message" disabled={!draft.trim() || sending || status === "connecting"} type="submit"><Send size={18} /></button></form>
-        {mode !== "text" && active && <div className={styles.devices}><label htmlFor="studio-mic">Microphone</label><select id="studio-mic" value={selectedMic} onChange={(event) => { setSelectedMic(event.target.value); client.current?.updateMic(event.target.value); }}><option value="">System default</option>{mics.filter((device) => device.deviceId).map((device) => <option key={device.deviceId} value={device.deviceId}>{device.label || "Microphone"}</option>)}</select></div>}
+        {active && <div className={styles.devices}><label htmlFor="studio-mic">Microphone</label><select id="studio-mic" value={selectedMic} onChange={(event) => { setSelectedMic(event.target.value); client.current?.updateMic(event.target.value); }}><option value="">System default</option>{mics.filter((device) => device.deviceId).map((device) => <option key={device.deviceId} value={device.deviceId}>{device.label || "Microphone"}</option>)}</select></div>}
         <div className={styles.controls}>
-          {active ? <>{mode === "talk" && <button className={styles.mute} aria-pressed={muted} onClick={() => mic(muted)}>{muted ? <MicOff size={18} /> : <Mic size={18} />}{muted ? "Unmute mic" : "Mute mic"}</button>}{mode === "hold" && <button className={styles.hold} aria-pressed={holding} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); hold(true); }} onPointerUp={() => hold(false)} onPointerCancel={() => hold(false)} onLostPointerCapture={() => hold(false)} onBlur={() => hold(false)} onKeyDown={(event) => { if ((event.key === " " || event.key === "Enter") && !event.repeat) { event.preventDefault(); hold(true); } }} onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); hold(false); } }}><Mic size={18} />{holding ? "Listening…" : "Hold to talk"}</button>}<button className={styles.end} onClick={() => void end("client_ended")}><PhoneOff size={18} /> End</button></> : status === "connecting" ? <button className={styles.start} onClick={() => void end("connection_cancelled")}>Connecting… Cancel</button> : <button className={styles.start} onClick={() => void start()}>{mode === "text" ? <Keyboard size={18} /> : <Mic size={18} />}{mode === "text" ? "Start conversation" : "Start talking"}<ArrowUpRight size={18} /></button>}
+          {active ? <>{mode === "talk" && <button className={styles.mute} aria-pressed={muted} onClick={() => mic(muted)}>{muted ? <MicOff size={18} /> : <Mic size={18} />}{muted ? "Unmute mic" : "Mute mic"}</button>}{mode === "hold" && <button className={styles.hold} aria-pressed={holding} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); hold(true); }} onPointerUp={() => hold(false)} onPointerCancel={() => hold(false)} onLostPointerCapture={() => hold(false)} onBlur={() => hold(false)} onKeyDown={(event) => { if ((event.key === " " || event.key === "Enter") && !event.repeat) { event.preventDefault(); hold(true); } }} onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); hold(false); } }}><Mic size={18} />{holding ? "Listening…" : "Hold to talk"}</button>}<button className={styles.end} onClick={() => void end("client_ended")}><PhoneOff size={18} /> End</button></> : status === "connecting" ? <button className={styles.start} onClick={() => void end("connection_cancelled")}>Connecting… Cancel</button> : <button className={styles.start} onClick={() => void start()}><Mic size={18} />Start talking<ArrowUpRight size={18} /></button>}
         </div>
         <footer className={styles.footer}><p>Starting shares your messages and enabled microphone audio with Google Gemini. We save text transcripts and lead progress for studio follow-up, but never raw audio. If you book, confirmed contact and appointment details are sent to Cal.com.</p><a href={`mailto:${email}`}>Prefer email? Talk to a person <ArrowUpRight size={12} /></a></footer>
         <audio ref={audio} autoPlay playsInline muted={!sound} />

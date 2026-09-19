@@ -33,6 +33,8 @@ def client(monkeypatch):
     server.starts.clear()
     server.sessions.clear()
     server.voice_conversations.clear()
+    server.live_workers.clear()
+    server.typed_input_ids.clear()
     server.voice_handoff_locks.clear()
     server.pending = 0
     with TestClient(server.app) as test_client:
@@ -82,6 +84,46 @@ def test_browser_observed_assistant_transcript_is_idempotent(client):
 def test_text_only_backend_is_not_exposed(client):
     assert client.post("/message", headers=AUTH, json={}).status_code == 404
     assert client.post("/message/stream", headers=AUTH, json={}).status_code == 404
+
+
+def test_typed_input_is_acknowledged_and_injected_once_into_live_voice_worker(client):
+    credentials = client.post("/session", json={"channel": "voice"}, headers=AUTH).json()
+    worker = Mock(
+        rtvi=Mock(interrupt_bot=AsyncMock()),
+        flush_pipeline=AsyncMock(return_value=True),
+        queue_frames=AsyncMock(),
+    )
+    server.live_workers[credentials["conversation_id"]] = ("pc", worker)
+    payload = {
+        "conversation_id": credentials["conversation_id"],
+        "session_token": credentials["session_token"],
+        "message_id": "voice-user:typed-turn",
+        "text": "Tomorrow at 7 pm",
+    }
+
+    first = client.post("/input", json=payload, headers=AUTH)
+    duplicate = client.post("/input", json=payload, headers=AUTH)
+
+    assert first.json() == {"ok": True, "accepted": True}
+    assert duplicate.json() == {"ok": True, "accepted": False}
+    worker.rtvi.interrupt_bot.assert_awaited_once()
+    worker.flush_pipeline.assert_awaited_once()
+    worker.queue_frames.assert_awaited_once()
+    frame = worker.queue_frames.await_args.args[0][0]
+    assert frame.messages == [{"role": "user", "content": payload["text"]}]
+    assert frame.run_llm is True
+
+
+def test_typed_input_requires_an_active_voice_worker(client):
+    credentials = client.post("/session", json={"channel": "voice"}, headers=AUTH).json()
+    response = client.post("/input", json={
+        "conversation_id": credentials["conversation_id"],
+        "session_token": credentials["session_token"],
+        "message_id": "voice-user:no-worker",
+        "text": "Tomorrow at 7 pm",
+    }, headers=AUTH)
+
+    assert response.status_code == 409
 
 
 def test_greeting_can_only_be_claimed_once(client):

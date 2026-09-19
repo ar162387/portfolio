@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import uuid
+from collections.abc import Callable
 
 from loguru import logger
 from pipecat.audio.vad.silero import SileroVADAnalyzer
@@ -336,6 +337,7 @@ async def run_bot(
     history: list[dict] | None = None,
     model: str | None = None,
     resume: bool = False,
+    worker_ready: Callable[[PipelineWorker], None] | None = None,
 ):
     worker = create_worker(
         connection,
@@ -346,6 +348,8 @@ async def run_bot(
         model=model,
         resume=resume,
     )
+    if worker_ready:
+        worker_ready(worker)
     runner = WorkerRunner(handle_sigint=False)
     try:
         await runner.run(worker)
