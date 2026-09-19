@@ -104,6 +104,7 @@ sessions: dict[str, asyncio.Task] = {}
 voice_conversations: dict[str, tuple[str, asyncio.Task, object]] = {}
 live_workers: dict[str, tuple[str, object]] = {}
 typed_input_ids: dict[str, deque[str]] = {}
+typed_input_locks: dict[str, asyncio.Lock] = {}
 voice_handoff_locks: dict[str, asyncio.Lock] = {}
 pending = 0
 starts: deque[float] = deque()
@@ -436,6 +437,7 @@ async def close_session(body: SessionEnd):
         raise HTTPException(401, "Invalid session")
     await asyncio.to_thread(end_conversation, body.conversation_id, body.reason)
     typed_input_ids.pop(body.conversation_id, None)
+    typed_input_locks.pop(body.conversation_id, None)
     return {"ok": True}
 
 
@@ -448,31 +450,48 @@ async def deliver_typed_input(body: VoiceInput):
     if not text:
         raise HTTPException(422, "Message is empty")
 
-    # The browser can reach this endpoint just before run_bot publishes its
-    # worker. Bound that race instead of rejecting a valid first typed turn.
-    live = live_workers.get(body.conversation_id)
-    for _ in range(20):
-        if live:
-            break
-        await asyncio.sleep(0.1)
+    async with typed_input_locks.setdefault(body.conversation_id, asyncio.Lock()):
+        # The browser can reach this endpoint just before run_bot publishes its
+        # worker. Bound that race instead of rejecting a valid first typed turn.
         live = live_workers.get(body.conversation_id)
-    if not live:
-        raise HTTPException(409, "Live voice session is unavailable")
+        for _ in range(20):
+            if live:
+                break
+            await asyncio.sleep(0.1)
+            live = live_workers.get(body.conversation_id)
+        if not live:
+            raise HTTPException(409, "Live voice session is unavailable")
 
-    message_ids = typed_input_ids.setdefault(body.conversation_id, deque(maxlen=100))
-    if body.message_id in message_ids:
-        return {"ok": True, "accepted": False}
+        message_ids = typed_input_ids.setdefault(body.conversation_id, deque(maxlen=100))
+        if body.message_id in message_ids:
+            return {"ok": True, "accepted": False}
 
-    _pc_id, worker = live
-    await worker.rtvi.interrupt_bot()
-    await worker.flush_pipeline()
-    await worker.queue_frames([
-        LLMMessagesAppendFrame(
-            messages=[{"role": "user", "content": text}],
-            run_llm=True,
-        )
-    ])
-    message_ids.append(body.message_id)
+        _pc_id, worker = live
+        await worker.rtvi.interrupt_bot()
+        await worker.flush_pipeline()
+        await worker.queue_frames([
+            LLMMessagesAppendFrame(
+                messages=[{"role": "user", "content": text}],
+                run_llm=True,
+            )
+        ])
+        message_ids.append(body.message_id)
+        try:
+            await asyncio.to_thread(
+                add_message,
+                body.conversation_id,
+                "user",
+                text,
+                message_id=body.message_id,
+                delivery_state="accepted",
+            )
+        except Exception as exc:
+            logger.bind(
+                diagnostic=True,
+                conversation_id=body.conversation_id,
+                event="typed_input_persist_failed",
+                error_type=type(exc).__name__,
+            ).info("voice_input")
     logger.bind(
         diagnostic=True,
         conversation_id=body.conversation_id,

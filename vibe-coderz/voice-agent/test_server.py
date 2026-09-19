@@ -35,6 +35,7 @@ def client(monkeypatch):
     server.voice_conversations.clear()
     server.live_workers.clear()
     server.typed_input_ids.clear()
+    server.typed_input_locks.clear()
     server.voice_handoff_locks.clear()
     server.pending = 0
     with TestClient(server.app) as test_client:
@@ -112,6 +113,10 @@ def test_typed_input_is_acknowledged_and_injected_once_into_live_voice_worker(cl
     frame = worker.queue_frames.await_args.args[0][0]
     assert frame.messages == [{"role": "user", "content": payload["text"]}]
     assert frame.run_llm is True
+    stored = server.conversation_messages(credentials["conversation_id"])
+    assert [(item["role"], item["text"], item["message_id"], item["delivery_state"]) for item in stored] == [
+        ("user", payload["text"], payload["message_id"], "accepted")
+    ]
 
 
 def test_typed_input_requires_an_active_voice_worker(client):

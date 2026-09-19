@@ -72,6 +72,7 @@ export function VoiceAssistant({ email }: { email: string }) {
   const assistantTurnId = useRef("");
   const assistantTurnText = useRef("");
   const typedTurn = useRef<{ id: string; text: string; appended: boolean } | null>(null);
+  const lastUserWasTyped = useRef(false);
   const transcript = useRef<HTMLDivElement>(null);
   const wantedMic = useRef(false);
   const modeRef = useRef<Mode>("talk");
@@ -235,11 +236,13 @@ export function VoiceAssistant({ email }: { email: string }) {
     transcript.current?.scrollTo({ top: transcript.current.scrollHeight, behavior: "instant" });
   }, [messages, interim]);
 
-  function appendUser(text: string, mergeSpeech = false) {
+  function appendUser(text: string, mergeSpeech = false, typed = false) {
     const id = ++messageId.current;
+    const previousWasTyped = lastUserWasTyped.current;
+    lastUserWasTyped.current = typed;
     setMessages((previous) => {
       const last = previous.at(-1);
-      if (mergeSpeech && last?.role === "user") {
+      if (mergeSpeech && !previousWasTyped && last?.role === "user") {
         const separator = /^[.,!?;:]/.test(text) || /\s$/.test(last.text) || /^\s/.test(text) ? "" : " ";
         return [...previous.slice(0, -1), { ...last, text: last.text + separator + text }];
       }
@@ -250,7 +253,7 @@ export function VoiceAssistant({ email }: { email: string }) {
     });
   }
 
-  async function createSession(channel: "voice" | "push_to_talk" | "text") {
+  async function createSession(channel: "voice" | "push_to_talk") {
     if (conversationId.current && sessionToken.current) {
       return { iceServers: sessionIceServers.current };
     }
@@ -312,7 +315,7 @@ export function VoiceAssistant({ email }: { email: string }) {
       : { id: `voice-user:${crypto.randomUUID()}`, text, appended: false };
     typedTurn.current = pending;
     if (!pending.appended) {
-      appendUser(text);
+      appendUser(text, false, true);
       pending.appended = true;
     }
     setStatus("processing"); setSpeechPending(null); setInterim("");
@@ -407,6 +410,7 @@ export function VoiceAssistant({ email }: { email: string }) {
           onBotStartedSpeaking: () => {
             if (!isCurrent()) return;
             clearResponseTimers();
+            setError("");
             if (bookingComplete.current) bookingConfirmationStarted.current = true;
             setStatus("speaking");
           },
@@ -438,6 +442,7 @@ export function VoiceAssistant({ email }: { email: string }) {
             if (!isCurrent()) return;
             persistAssistantTurn(true);
             clearResponseTimers();
+            setError("");
             replyId.current = null;
             assistantTurnId.current = `voice-assistant:${crypto.randomUUID()}`;
             assistantTurnText.current = "";
