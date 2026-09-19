@@ -94,7 +94,8 @@ def test_typed_input_is_acknowledged_and_injected_once_into_live_voice_worker(cl
         flush_pipeline=AsyncMock(return_value=True),
         queue_frames=AsyncMock(),
     )
-    server.live_workers[credentials["conversation_id"]] = ("pc", worker)
+    live_service = Mock(send_text_reliably=AsyncMock())
+    server.live_workers[credentials["conversation_id"]] = ("pc", worker, live_service)
     payload = {
         "conversation_id": credentials["conversation_id"],
         "session_token": credentials["session_token"],
@@ -108,15 +109,39 @@ def test_typed_input_is_acknowledged_and_injected_once_into_live_voice_worker(cl
     assert first.json() == {"ok": True, "accepted": True}
     assert duplicate.json() == {"ok": True, "accepted": False}
     worker.rtvi.interrupt_bot.assert_awaited_once()
-    worker.flush_pipeline.assert_awaited_once()
+    assert worker.flush_pipeline.await_count == 2
     worker.queue_frames.assert_awaited_once()
+    live_service.send_text_reliably.assert_awaited_once_with(payload["text"])
     frame = worker.queue_frames.await_args.args[0][0]
     assert frame.messages == [{"role": "user", "content": payload["text"]}]
-    assert frame.run_llm is True
+    assert frame.run_llm is False
     stored = server.conversation_messages(credentials["conversation_id"])
     assert [(item["role"], item["text"], item["message_id"], item["delivery_state"]) for item in stored] == [
-        ("user", payload["text"], payload["message_id"], "accepted")
+        ("user", payload["text"], payload["message_id"], "completed")
     ]
+
+
+def test_typed_input_is_not_acknowledged_while_live_model_is_recovering(client):
+    credentials = client.post("/session", json={"channel": "voice"}, headers=AUTH).json()
+    worker = Mock(
+        rtvi=Mock(interrupt_bot=AsyncMock()),
+        flush_pipeline=AsyncMock(return_value=True),
+        queue_frames=AsyncMock(),
+    )
+    live_service = Mock(send_text_reliably=AsyncMock(side_effect=TimeoutError()))
+    server.live_workers[credentials["conversation_id"]] = ("pc", worker, live_service)
+
+    response = client.post("/input", json={
+        "conversation_id": credentials["conversation_id"],
+        "session_token": credentials["session_token"],
+        "message_id": "voice-user:recovering",
+        "text": "Tomorrow at 7 pm",
+    }, headers=AUTH)
+
+    assert response.status_code == 409
+    assert "voice-user:recovering" not in server.typed_input_ids.get(
+        credentials["conversation_id"], []
+    )
 
 
 def test_typed_input_requires_an_active_voice_worker(client):
@@ -181,6 +206,36 @@ def test_transient_live_failures_stop_after_second_attempt():
         service.push_error.assert_awaited_once()
 
     asyncio.run(check())
+
+
+def test_reliable_typed_input_waits_for_and_uses_gemini_realtime_stream():
+    session = Mock(send_realtime_input=AsyncMock())
+    service = Mock(
+        _studio_text_send_lock=asyncio.Lock(),
+        _disconnecting=False,
+        _session=session,
+        _ready_for_realtime_input=True,
+        _handle_send_error=AsyncMock(),
+    )
+
+    asyncio.run(ReliableGeminiLiveService.send_text_reliably(service, "Typed turn"))
+
+    session.send_realtime_input.assert_awaited_once_with(text="Typed turn")
+    service._handle_send_error.assert_not_awaited()
+
+
+def test_reliable_typed_input_rejects_when_gemini_stream_is_not_ready():
+    service = Mock(
+        _studio_text_send_lock=asyncio.Lock(),
+        _disconnecting=True,
+        _session=None,
+        _ready_for_realtime_input=False,
+    )
+
+    with pytest.raises(TimeoutError):
+        asyncio.run(ReliableGeminiLiveService.send_text_reliably(
+            service, "Typed turn", timeout=0.01
+        ))
 
 
 def test_voice_recovery_restores_history_without_replaying_last_turn(monkeypatch):

@@ -15,8 +15,10 @@ const labels: Record<Status, string> = {
   speaking: "Your assistant is speaking", ended: "Conversation ended", error: "Let’s try that again",
 };
 const VOICE_IDLE_MS = 60_000;
-const VOICE_SESSION_MS = 300_000;
-const FAREWELL_TEXT = "Let me know if you want to discuss anything else. Thanks for visiting Vibecoderzz.";
+const VOICE_SESSION_MS = 14 * 60_000;
+const farewellText = (reason: "inactivity_timeout" | "session_limit") => reason === "session_limit"
+  ? "This call has reached its 14-minute limit. Start a new conversation to continue."
+  : "I haven't heard anything for a minute, so I'll end this call. You can start another conversation anytime.";
 
 function isSuccessfulBookingResult(value: unknown): boolean {
   if (typeof value === "string") {
@@ -133,11 +135,15 @@ export function VoiceAssistant({ email }: { email: string }) {
     farewellPlayed.current = true;
     clearVoiceTimers();
     setStatus("speaking");
+    setError(reason === "session_limit"
+      ? "The 14-minute call limit was reached. Start a new conversation to continue."
+      : "The call ended after one minute without visitor input.");
+    const closingText = farewellText(reason);
     setMessages((previous) => [...previous, {
       id: ++messageId.current,
       role: "assistant",
-      text: FAREWELL_TEXT,
-      spoken: FAREWELL_TEXT.length,
+      text: closingText,
+      spoken: closingText.length,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     }]);
     shutdownTimer.current = setTimeout(() => { void end(reason); }, 12_000);
@@ -269,7 +275,7 @@ export function VoiceAssistant({ email }: { email: string }) {
     sessionToken.current = payload.sessionToken;
     sessionIceServers.current = payload.iceServers || [];
     sessionWarningTimer.current = setTimeout(() => {
-      setError("This conversation will end in 30 seconds. You can start a new one afterward.");
+      setError("This call will reach its 14-minute limit in 30 seconds. You can start a new conversation afterward.");
     }, VOICE_SESSION_MS - 30_000);
     sessionTimer.current = setTimeout(() => { void requestFarewell("session_limit"); }, VOICE_SESSION_MS);
     return { iceServers: sessionIceServers.current };

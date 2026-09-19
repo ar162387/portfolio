@@ -119,7 +119,7 @@ async def watch_connection(connection):
         now = time.monotonic()
         if connection.is_connected():
             last_connected = now
-        if now - started >= _env_seconds("MAX_SESSION_SECONDS", 300, 30):
+        if now - started >= _env_seconds("MAX_SESSION_SECONDS", 840, 30):
             return
         if last_connected is None:
             if now - started >= _env_seconds("CONNECT_TIMEOUT_SECONDS", 20, 5):
@@ -156,7 +156,11 @@ async def serve_session(connection, body):
         # the visitor does not hear a different persona midway through the call.
         model = os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live")
         def worker_ready(pipeline_worker):
-            live_workers[conversation_id] = (connection.pc_id, pipeline_worker)
+            live_workers[conversation_id] = (
+                connection.pc_id,
+                pipeline_worker,
+                pipeline_worker.studio_live_service,
+            )
 
         worker = asyncio.create_task(run_bot(
             connection, body.studio_knowledge.model_dump(), greet=greet,
@@ -466,15 +470,25 @@ async def deliver_typed_input(body: VoiceInput):
         if body.message_id in message_ids:
             return {"ok": True, "accepted": False}
 
-        _pc_id, worker = live
+        _pc_id, worker, live_service = live
         await worker.rtvi.interrupt_bot()
         await worker.flush_pipeline()
+        # Keep Pipecat's local history ordered for tools and reconnection, but
+        # do not run inference from this bookkeeping frame. Gemini Live assumes
+        # post-initialisation context updates are already known by the provider.
         await worker.queue_frames([
             LLMMessagesAppendFrame(
                 messages=[{"role": "user", "content": text}],
-                run_llm=True,
+                run_llm=False,
             )
         ])
+        await worker.flush_pipeline()
+        try:
+            await live_service.send_text_reliably(text)
+        except TimeoutError as exc:
+            raise HTTPException(409, "Live voice session is recovering") from exc
+        except Exception as exc:
+            raise HTTPException(503, "Typed input could not reach the live model") from exc
         message_ids.append(body.message_id)
         try:
             await asyncio.to_thread(
@@ -483,7 +497,7 @@ async def deliver_typed_input(body: VoiceInput):
                 "user",
                 text,
                 message_id=body.message_id,
-                delivery_state="accepted",
+                delivery_state="completed",
             )
         except Exception as exc:
             logger.bind(

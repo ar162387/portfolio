@@ -32,6 +32,31 @@ from lead_tools import qualification_tool
 class ReliableGeminiLiveService(GeminiLiveLLMService):
     """Stop invalid Live sessions immediately and bound transient recovery attempts."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._studio_text_send_lock = asyncio.Lock()
+
+    async def send_text_reliably(self, text: str, timeout: float = 6.0) -> None:
+        """Send typed input only after Gemini's realtime stream is writable.
+
+        Context frames after initialisation are bookkeeping-only in Gemini Live;
+        sending text through that path can therefore look accepted while the
+        provider never receives it. This uses Gemini's synchronized realtime
+        text stream and treats provider readiness as part of the acknowledgement.
+        """
+        async with self._studio_text_send_lock:
+            deadline = asyncio.get_running_loop().time() + timeout
+            while self._disconnecting or not self._session or not self._ready_for_realtime_input:
+                if asyncio.get_running_loop().time() >= deadline:
+                    raise TimeoutError("Gemini Live is not ready for typed input")
+                await asyncio.sleep(0.05)
+            session = self._session
+            try:
+                await session.send_realtime_input(text=text)
+            except Exception as exc:
+                await self._handle_send_error(exc)
+                raise
+
     def _check_and_reset_failure_counter(self):
         # A response must complete before a new session may be treated as healthy.
         # The upstream ten-second reset allowed failures 14 seconds apart to loop.
@@ -270,6 +295,7 @@ def create_worker(
         idle_timeout_secs=None,
         enable_rtvi=True,
     )
+    worker.studio_live_service = llm
     greeting_queued = False
 
     @worker.rtvi.event_handler("on_client_ready")
