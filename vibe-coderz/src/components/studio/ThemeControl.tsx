@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { Laptop, Moon, Sun } from "lucide-react";
 
 type ThemeChoice = "system" | "light" | "dark";
 const storageKey = "vibecoderzz-theme";
-const choices: ThemeChoice[] = ["system", "light", "dark"];
+const choices: ThemeChoice[] = ["light", "system", "dark"];
 const icons = { system: Laptop, light: Sun, dark: Moon };
 const changeEvent = "vibecoderzz-theme-change";
 const subscribe = (callback: () => void) => {
@@ -19,31 +19,6 @@ const snapshot = (): ThemeChoice => {
 
 export function ThemeControl() {
   const choice = useSyncExternalStore<ThemeChoice>(subscribe, snapshot, () => "system");
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-  const menu = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    menu.current?.querySelector<HTMLButtonElement>(".is-selected")?.focus();
-    const onPointerDown = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        trigger.current?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
   const choose = (next: ThemeChoice) => {
     document.documentElement.setAttribute("data-theme-choice", next);
     document.documentElement.setAttribute(
@@ -59,63 +34,42 @@ export function ThemeControl() {
       // The current page still honors the selection if storage is unavailable.
     }
     window.dispatchEvent(new Event(changeEvent));
-    setOpen(false);
-    trigger.current?.focus();
   };
 
-  const Icon = icons[choice];
   return (
-    <div className="theme-control" ref={root}>
-      <button
-        ref={trigger}
-        type="button"
-        className="theme-trigger"
-        aria-label={`Appearance: ${choice}. Choose theme`}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls="theme-menu"
-        onClick={() => setOpen(!open)}
-      >
-        <Icon size={19} aria-hidden="true" />
-        <span>{choice}</span>
-      </button>
-      {open && (
-        <div
-          className="theme-menu"
-          id="theme-menu"
-          role="menu"
-          aria-label="Appearance"
-          ref={menu}
-          onKeyDown={(event) => {
-            if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
-            event.preventDefault();
-            const items = Array.from(menu.current?.querySelectorAll<HTMLButtonElement>("button") ?? []);
-            const current = items.indexOf(document.activeElement as HTMLButtonElement);
-            const target = event.key === "Home" ? 0
-              : event.key === "End" ? items.length - 1
-              : (current + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
-            items[target]?.focus();
-          }}
-        >
-          {choices.map((item) => {
-            const ItemIcon = icons[item];
-            return (
-              <button
-                key={item}
-                type="button"
-                role="menuitemradio"
-                aria-checked={choice === item}
-                className={choice === item ? "is-selected" : undefined}
-                onClick={() => choose(item)}
-              >
-                <ItemIcon size={17} aria-hidden="true" />
-                <span>{item}</span>
-                <span className="theme-choice-mark" aria-hidden="true">{choice === item ? "✓" : ""}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+    <div
+      className="theme-switch"
+      data-choice={choice}
+      role="radiogroup"
+      aria-label="Appearance"
+      onKeyDown={(event) => {
+        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const index = choices.indexOf(choice);
+        const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? 2
+          : (index + (["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1) + 3) % 3;
+        choose(choices[nextIndex]);
+        event.currentTarget.querySelectorAll<HTMLButtonElement>("button")[nextIndex]?.focus();
+      }}
+    >
+      <span className="theme-switch-thumb" aria-hidden="true" />
+      {choices.map((item) => {
+        const Icon = icons[item];
+        return (
+          <button
+            key={item}
+            type="button"
+            role="radio"
+            aria-checked={choice === item}
+            aria-label={`${item[0].toUpperCase()}${item.slice(1)} theme`}
+            title={item === "system" ? "Follow your system appearance (default)" : `${item} appearance`}
+            tabIndex={choice === item ? 0 : -1}
+            onClick={() => choose(item)}
+          >
+            <Icon size={16} aria-hidden="true" />
+          </button>
+        );
+      })}
     </div>
   );
 }

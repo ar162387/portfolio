@@ -2,6 +2,7 @@ import { PageIntro, Label } from "@/components/studio/Shared";
 import { ContactForm } from "@/components/studio/Interactive";
 import { studio } from "@/data/studio";
 import { pageMetadata } from "@/lib/seo";
+import { PhoneContacts } from "@/components/studio/PhoneContacts";
 export const metadata = pageMetadata(
   "Start a Project",
   "Tell Vibecoderzz about your software, AI automation, or digital growth project. Based in Central London, working worldwide.",
@@ -34,6 +35,7 @@ export default function Contact() {
           <Label>DIRECT IS GOOD, TOO</Label>
           <h3>Say hello.</h3>
           <a href={`mailto:${studio.email}`}>{studio.email} ↗</a>
+          <PhoneContacts placement="contact" />
           <p>
             Central London, United Kingdom
             <br />

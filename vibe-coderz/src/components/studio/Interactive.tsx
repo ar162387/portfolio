@@ -27,6 +27,7 @@ import { groups, projects, studio } from "@/data/studio";
 import { usePathname } from "next/navigation";
 import { trackEvent } from "./Analytics";
 import { ThemeControl } from "./ThemeControl";
+import { PhoneContacts } from "./PhoneContacts";
 
 const serviceIcons: Record<string, LucideIcon> = {
   "ai-automation": Workflow,
@@ -107,8 +108,8 @@ export function Navigation() {
           </span>
           vibecoderzz<span className="brand-dot">✳</span>
         </Link>
+        <ThemeControl />
         <div className="nav-actions">
-          <ThemeControl />
           <button
             className="mobile-toggle"
             aria-label={open ? "Close navigation" : "Open navigation"}
@@ -173,6 +174,7 @@ export function Navigation() {
             Let’s talk <ArrowUpRight size={17} />
           </Link>
         </nav>
+        <PhoneContacts placement="header" />
       </div>
       {servicesOpen && (
         <div id="services-menu" className="mega-menu">

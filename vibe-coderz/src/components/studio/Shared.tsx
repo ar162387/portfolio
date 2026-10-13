@@ -5,6 +5,7 @@ import { SeoColumn } from "./SeoColumn";
 import { MethodJourney, MotionControl } from "./Experience";
 import { ArrowUpRight } from "lucide-react";
 import { articles, studio } from "@/data/studio";
+import { PhoneContacts } from "./PhoneContacts";
 export function Button({
   href,
   children,
@@ -153,6 +154,7 @@ export function Footer() {
         </p>
         <div>
           <a href={`mailto:${studio.email}`}>{studio.email} ↗</a>
+          <PhoneContacts placement="footer" />
           <span>Central London, United Kingdom · Working worldwide</span>
         </div>
       </div>
