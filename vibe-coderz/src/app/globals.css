@@ -137,7 +137,7 @@ img {
   background: var(--paper);
   border-bottom: 1px solid var(--line);
 }
-.cookie-banner { position: fixed; z-index: 100; right: 24px; bottom: 24px; width: min(440px, calc(100vw - 32px)); padding: 26px; color: var(--paper); background: var(--ink); border: 1px solid #44453f; box-shadow: 0 20px 55px rgba(0, 0, 0, 0.24); }
+.cookie-banner { position: fixed; z-index: 100; left: 24px; bottom: 24px; width: min(440px, calc(100vw - 32px)); padding: 26px; color: var(--paper); background: var(--ink); border: 1px solid #44453f; box-shadow: 0 20px 55px rgba(0, 0, 0, 0.24); }
 .cookie-banner h2 { margin: 10px 0; font-size: 25px; line-height: 1.08; }
 .cookie-banner p:not(.eyebrow) { font-size: 14px; color: #d9dad2; }
 .cookie-banner > a { display: inline-block; margin-top: 18px; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
@@ -2496,6 +2496,11 @@ summary,
   .nav-cta { gap: 12px; padding-inline: 14px; }
   .nav-actions { margin-left: 12px; }
   .theme-trigger { padding-inline: 9px; }
+}
+
+/* Keep the left-hand consent form clear of the right-hand voice invitation. */
+@media (max-width: 850px) {
+  .cookie-banner { left: 16px; bottom: 118px; max-height: calc(100dvh - 134px); overflow-y: auto; }
 }
 
 /* Shared UK-first contact panel, always outside the mobile menu. */

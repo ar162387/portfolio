@@ -23,6 +23,7 @@ export function Analytics() {
   const pathname = usePathname();
   const [consent, setConsent] = useState<"granted" | "denied" | null>(null);
   const [ready, setReady] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const savedConsent = window.localStorage.getItem(consentKey);
@@ -36,7 +37,7 @@ export function Analytics() {
       const link = (event.target as Element).closest('a[href="#cookie-settings"]');
       if (link) {
         event.preventDefault();
-        setConsent(null);
+        setSettingsOpen(true);
       }
     };
     document.addEventListener("click", openSettings);
@@ -76,6 +77,7 @@ export function Analytics() {
   const saveConsent = (value: "granted" | "denied") => {
     window.localStorage.setItem(consentKey, value);
     setConsent(value);
+    setSettingsOpen(false);
   };
 
   return (
@@ -91,7 +93,7 @@ gtag('config', '${measurementId}', { send_page_view: false });`}
           </Script>
         </>
       )}
-      {consent === null && (
+      {(consent === null || settingsOpen) && (
         <aside className="cookie-banner" aria-label="Cookie preferences">
           <p className="eyebrow">YOUR PRIVACY</p>
           <h2>Help us understand how the site is used.</h2>

@@ -4,15 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Mic, MicOff, PhoneOff, Send, Volume2, VolumeX, X } from "lucide-react";
 import type { PipecatClient } from "@pipecat-ai/client-js";
 import styles from "./voice-assistant.module.css";
+import { boundedCleanup, VoiceSessionWatchdog, waitUntilOnline } from "@/lib/voice-session-watchdog";
 
 type Status = "idle" | "connecting" | "listening" | "processing" | "responding" | "recovering" | "speaking" | "ended" | "error";
 type Mode = "talk" | "hold";
-type Message = { id: number; role: "user" | "assistant"; text: string; spoken: number; time: string };
+type Message = { id: number; role: "user" | "assistant"; text: string; spoken: number; time: string; interrupted?: boolean };
 const labels: Record<Status, string> = {
   idle: "A conversation starts here", connecting: "Connecting…", listening: "Listening to you",
   processing: "Working on your reply…", recovering: "Restoring the conversation…",
   responding: "Writing your reply…",
-  speaking: "Your assistant is speaking", ended: "Conversation ended", error: "Let’s try that again",
+  speaking: "Your representative is speaking", ended: "Conversation ended", error: "Let’s try that again",
 };
 const VOICE_IDLE_MS = 60_000;
 const VOICE_SESSION_MS = 14 * 60_000;
@@ -62,7 +63,7 @@ async function collectConnectionStats(transport: StatsTransport) {
   };
 }
 
-export function VoiceAssistant({ email }: { email: string }) {
+export function VoiceAssistant() {
   const dialog = useRef<HTMLDialogElement>(null);
   const audio = useRef<HTMLAudioElement>(null);
   const client = useRef<PipecatClient | null>(null);
@@ -89,6 +90,16 @@ export function VoiceAssistant({ email }: { email: string }) {
   const sessionIceServers = useRef<RTCIceServer[]>([]);
   const voiceRecoveryAttempt = useRef(0);
   const voiceRecoveryInProgress = useRef(false);
+  const openingPending = useRef(true);
+  const startInProgress = useRef(false);
+  const responseWatchdog = useRef<VoiceSessionWatchdog | null>(null);
+  const networkCleanup = useRef<(() => void) | null>(null);
+  const assistantSpeaking = useRef(false);
+  const assistantGenerated = useRef(false);
+  const assistantPlaybackFinished = useRef(false);
+  const recoveryMic = useRef<boolean | null>(null);
+  const connectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRequests = useRef(new Set<AbortController>());
   const autoClosing = useRef(false);
   const farewellPlayed = useRef(false);
   const bookingComplete = useRef(false);
@@ -134,6 +145,8 @@ export function VoiceAssistant({ email }: { email: string }) {
     autoClosing.current = true;
     farewellPlayed.current = true;
     clearVoiceTimers();
+    responseWatchdog.current?.stop();
+    mic(false);
     setStatus("speaking");
     setError(reason === "session_limit"
       ? "The 14-minute call limit was reached. Start a new conversation to continue."
@@ -170,6 +183,19 @@ export function VoiceAssistant({ email }: { email: string }) {
     idleTimer.current = setTimeout(() => { void requestFarewell("inactivity_timeout"); }, VOICE_IDLE_MS);
   }
 
+  function finishAssistantReply() {
+    responseWatchdog.current?.stop();
+    persistAssistantTurn(false);
+    replyId.current = null;
+    voiceRecoveryAttempt.current = 0;
+    typedTurn.current = null;
+    setStatus("listening");
+    if (bookingComplete.current && bookingConfirmationStarted.current) {
+      clearVoiceTimers();
+      shutdownTimer.current = setTimeout(() => { void end("booking_completed"); }, 600);
+    } else if (!bookingComplete.current) armIdleTimer();
+  }
+
   function mic(enabled: boolean) {
     wantedMic.current = enabled;
     const track = client.current?.tracks().local.audio;
@@ -179,6 +205,14 @@ export function VoiceAssistant({ email }: { email: string }) {
   }
 
   async function release(preserveSession = false) {
+    if (connectTimer.current) clearTimeout(connectTimer.current);
+    connectTimer.current = null;
+    responseWatchdog.current?.stop();
+    networkCleanup.current?.(); networkCleanup.current = null;
+    startInProgress.current = false;
+    assistantSpeaking.current = false;
+    for (const controller of pendingRequests.current) controller.abort();
+    pendingRequests.current.clear();
     if (preserveSession) clearResponseTimers(); else clearVoiceTimers();
     autoClosing.current = false;
     if (!preserveSession) typedTurn.current = null;
@@ -197,11 +231,12 @@ export function VoiceAssistant({ email }: { email: string }) {
       audio.current.removeAttribute("src");
       audio.current.load();
     }
-    if (dispose) closing.current = dispose();
+    if (dispose) closing.current = boundedCleanup(dispose(), 6500);
     await closing.current;
   }
 
   async function end(reason = "client_ended") {
+    persistAssistantTurn(true);
     setStatus("ended"); setInterim(""); setSpeechPending(null); setHolding(false); setMuted(false); setNeedsPlayback(false);
     if (conversationId.current && sessionToken.current) {
       void fetch("/api/voice/session/end", {
@@ -211,12 +246,15 @@ export function VoiceAssistant({ email }: { email: string }) {
         }), keepalive: true,
       }).catch(() => {});
     }
-    await release();
     conversationId.current = ""; sessionToken.current = "";
+    openingPending.current = true;
+    recoveryMic.current = null;
     sessionIceServers.current = [];
+    await release();
   }
 
   useEffect(() => {
+    const requests = pendingRequests.current;
     const pauseHold = () => {
       if (modeRef.current !== "hold") return;
       wantedMic.current = false;
@@ -232,6 +270,11 @@ export function VoiceAssistant({ email }: { email: string }) {
       window.removeEventListener("blur", pauseHold);
       document.removeEventListener("visibilitychange", pauseHold);
       generation.current += 1;
+      clearVoiceTimers();
+      responseWatchdog.current?.stop();
+      if (connectTimer.current) clearTimeout(connectTimer.current);
+      networkCleanup.current?.();
+      for (const controller of requests) controller.abort();
       const current = client.current;
       current?.tracks().local.audio?.stop();
       void cleanup.current?.();
@@ -259,18 +302,28 @@ export function VoiceAssistant({ email }: { email: string }) {
     });
   }
 
-  async function createSession(channel: "voice" | "push_to_talk") {
+  async function createSession(channel: "voice" | "push_to_talk", attempt: number) {
     if (conversationId.current && sessionToken.current) {
       return { iceServers: sessionIceServers.current };
     }
-    const response = await fetch("/api/voice/session", {
+    const controller = new AbortController();
+    pendingRequests.current.add(controller);
+    let response: Response;
+    try { response = await fetch("/api/voice/session", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ channel }), signal: AbortSignal.timeout(8000), cache: "no-store",
-    });
+      body: JSON.stringify({ channel }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]), cache: "no-store",
+    }); } finally { pendingRequests.current.delete(controller); }
     if (!response.ok) throw new Error("Session unavailable");
     const payload = await response.json() as {
       conversationId: string; sessionToken: string; iceServers?: RTCIceServer[];
     };
+    if (generation.current !== attempt) {
+      void fetch("/api/voice/session/end", {
+        method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
+        body: JSON.stringify({ conversationId: payload.conversationId, sessionToken: payload.sessionToken, reason: "connection_cancelled" }),
+      }).catch(() => {});
+      throw new Error("Connection cancelled");
+    }
     conversationId.current = payload.conversationId;
     sessionToken.current = payload.sessionToken;
     sessionIceServers.current = payload.iceServers || [];
@@ -294,6 +347,10 @@ export function VoiceAssistant({ email }: { email: string }) {
   }
 
   function persistAssistantTurn(interrupted = false) {
+    if (interrupted && replyId.current !== null) {
+      const id = replyId.current;
+      setMessages((previous) => previous.map((message) => message.id === id ? { ...message, interrupted: true } : message));
+    }
     const text = assistantTurnText.current.trim();
     const messageId = assistantTurnId.current;
     assistantTurnText.current = "";
@@ -312,6 +369,7 @@ export function VoiceAssistant({ email }: { email: string }) {
   }
 
   async function sendText(text: string) {
+    const attempt = generation.current;
     clearResponseTimers();
     if (!client.current || !conversationId.current || !sessionToken.current) {
       throw new Error("Voice session unavailable");
@@ -321,18 +379,17 @@ export function VoiceAssistant({ email }: { email: string }) {
       : { id: `voice-user:${crypto.randomUUID()}`, text, appended: false };
     typedTurn.current = pending;
     if (!pending.appended) {
+      persistAssistantTurn(true);
       appendUser(text, false, true);
       pending.appended = true;
     }
     setStatus("processing"); setSpeechPending(null); setInterim("");
     delayTimer.current = setTimeout(() => setError("This is taking a little longer than usual."), 8000);
-    recoveryTimer.current = setTimeout(() => {
-      setError("The voice reply stalled. Please try saying or sending that once more.");
-      // Keep the active call usable. The previous error state exposed a start
-      // button whose handler could not run while the existing client remained.
-      setStatus("listening");
-    }, 15000);
-    const response = await fetch("/api/voice/input", {
+    responseWatchdog.current?.wait("reply");
+    const controller = new AbortController();
+    pendingRequests.current.add(controller);
+    try {
+      const response = await fetch("/api/voice/input", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -341,44 +398,76 @@ export function VoiceAssistant({ email }: { email: string }) {
         messageId: pending.id,
         text,
       }),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]),
       cache: "no-store",
     });
-    if (!response.ok) throw new Error("Typed message was not acknowledged");
+      if (generation.current !== attempt) return;
+      if (!response.ok) throw new Error("Typed message was not acknowledged");
+      const acknowledgement = await response.json() as { accepted?: boolean };
+      if (generation.current !== attempt) return;
+      if (acknowledgement.accepted === false) {
+        typedTurn.current = null;
+        responseWatchdog.current?.stop();
+        clearResponseTimers();
+        setStatus("listening");
+        setError("That message was already delivered. If its reply was interrupted, please ask again.");
+        armIdleTimer();
+      }
+    } finally {
+      pendingRequests.current.delete(controller);
+    }
   }
 
   async function recoverVoice(message: string) {
     if (voiceRecoveryInProgress.current) return;
     voiceRecoveryInProgress.current = true;
     const nextAttempt = voiceRecoveryAttempt.current + 1;
+    let recoveryGeneration: number | undefined;
+    recoveryMic.current = wantedMic.current;
     try {
       if (nextAttempt > 1) {
-        setError("The voice connection is unavailable right now. Please end this call and try again shortly.");
-        setStatus("error");
-        await release(true);
+        await failVoice("The connection could not recover. Your conversation is saved here. Use Reconnect to try again.");
         return;
       }
       setStatus("recovering"); setError(message); setSpeechPending(null); setInterim("");
+      persistAssistantTurn(true);
+      setSending(false);
+      recoveryGeneration = generation.current + 1;
       await release(true);
+      if (generation.current !== recoveryGeneration) return;
+      const controller = new AbortController();
+      pendingRequests.current.add(controller);
+      try {
+        if (!navigator.onLine) setError("You are offline. Your conversation is kept here. Waiting for the network…");
+        await waitUntilOnline(controller.signal);
+      } finally { pendingRequests.current.delete(controller); }
+      if (generation.current !== recoveryGeneration) return;
       voiceRecoveryAttempt.current = nextAttempt;
       await start(modeRef.current, undefined, nextAttempt);
+    } catch {
+      if (generation.current === recoveryGeneration && !client.current && conversationId.current) {
+        await failVoice("The network is still unavailable. Your conversation is kept here. Reconnect when you are online.");
+      }
     } finally {
       voiceRecoveryInProgress.current = false;
     }
   }
 
   async function start(startMode: Mode = modeRef.current, firstText?: string, recoveryAttempt = 0) {
-    if (client.current || status === "connecting") return;
+    if (client.current || startInProgress.current) return;
+    startInProgress.current = true;
     if (recoveryAttempt === 0) voiceRecoveryAttempt.current = 0;
     const attempt = ++generation.current;
-    const isCurrent = () => generation.current === attempt;
+    const isCurrent = () => generation.current === attempt && !autoClosing.current;
     const continuing = Boolean(conversationId.current);
+    if (firstText) openingPending.current = false;
     modeRef.current = startMode; setMode(startMode);
-    wantedMic.current = startMode === "talk";
+    wantedMic.current = continuing && recoveryMic.current !== null ? recoveryMic.current : startMode === "talk";
     setStatus("connecting"); setError("");
     if (!continuing) setMessages([]);
     setInterim(""); setSpeechPending(null);
-    setMuted(startMode !== "talk"); setHolding(false); setNeedsPlayback(false);
+    setMuted(!wantedMic.current); setHolding(false); setNeedsPlayback(false);
+    assistantGenerated.current = false;
     replyId.current = null;
     autoClosing.current = false; farewellPlayed.current = false; bookingComplete.current = false;
     bookingConfirmationStarted.current = false;
@@ -389,7 +478,7 @@ export function VoiceAssistant({ email }: { email: string }) {
       await closing.current;
       if (!isCurrent()) return;
       if (!window.isSecureContext) throw new Error("Voice needs HTTPS or localhost.");
-      const voiceConfig = await createSession(startMode === "talk" ? "voice" : "push_to_talk");
+      const voiceConfig = await createSession(startMode === "talk" ? "voice" : "push_to_talk", attempt);
       const [{ PipecatClient }, { ReliableSmallWebRTCTransport }, { default: Daily }] = await Promise.all([
         import("@pipecat-ai/client-js"), import("@/lib/reliable-small-webrtc"), import("@daily-co/daily-js"),
       ]);
@@ -397,7 +486,10 @@ export function VoiceAssistant({ email }: { email: string }) {
       const transport = new ReliableSmallWebRTCTransport({
         iceServers: voiceConfig.iceServers || [],
         waitForICEGathering: true,
-        relayOnly: new URLSearchParams(window.location.search).get("voiceRelay") === "1",
+        relayOnly: recoveryAttempt > 0 || new URLSearchParams(window.location.search).get("voiceRelay") === "1",
+      });
+      responseWatchdog.current = new VoiceSessionWatchdog(() => {
+        if (isCurrent()) void recoverVoice("The reply stopped arriving. Reconnecting… Please repeat your last message once connected.");
       });
       const statsTransport: StatsTransport = transport;
       const pc = new PipecatClient({
@@ -410,58 +502,75 @@ export function VoiceAssistant({ email }: { email: string }) {
           onBotReady: () => {
             if (!isCurrent()) return;
             connected = true; clearTimeout(timeout); clearResponseTimers(); setStatus("listening");
+            startInProgress.current = false;
+            if (openingPending.current) responseWatchdog.current?.wait("reply");
+            else {
+              armIdleTimer();
+              if (recoveryAttempt) setError("Reconnected. Please repeat your last message if its reply was interrupted.");
+            }
             void reportConnection(recoveryAttempt ? "recovered" : "connected", statsTransport);
-            if (startMode !== "talk") mic(false);
+            mic(wantedMic.current);
           },
           onBotStartedSpeaking: () => {
             if (!isCurrent()) return;
             clearResponseTimers();
+            assistantSpeaking.current = true;
+            assistantPlaybackFinished.current = false;
+            openingPending.current = false;
+            responseWatchdog.current?.progress();
             setError("");
             if (bookingComplete.current) bookingConfirmationStarted.current = true;
             setStatus("speaking");
           },
           onBotStoppedSpeaking: () => {
             if (!isCurrent()) return;
-            setStatus("listening");
-            if (bookingComplete.current) {
-              if (bookingConfirmationStarted.current) {
-                clearVoiceTimers();
-                shutdownTimer.current = setTimeout(() => { void end("booking_completed"); }, 600);
-              }
-              return;
-            }
-            if (autoClosing.current) {
-              if (shutdownTimer.current) clearTimeout(shutdownTimer.current);
-              shutdownTimer.current = setTimeout(() => { void end("inactivity_timeout"); }, 900);
-            } else armIdleTimer();
+            assistantSpeaking.current = false;
+            assistantPlaybackFinished.current = true;
+            if (assistantGenerated.current) {
+              finishAssistantReply();
+            } else { responseWatchdog.current?.progress(); setStatus("processing"); }
+
           },
           onUserStartedSpeaking: () => {
             if (!isCurrent()) return;
             clearResponseTimers();
+            responseWatchdog.current?.stop();
+            persistAssistantTurn(true);
             setSpeechPending("listening");
           },
           onUserStoppedSpeaking: () => {
             if (!isCurrent()) return;
             setSpeechPending("transcribing");
+            responseWatchdog.current?.wait("transcript");
           },
           onBotLlmStarted: () => {
             if (!isCurrent()) return;
             persistAssistantTurn(true);
             clearResponseTimers();
+            assistantGenerated.current = false;
+            assistantPlaybackFinished.current = false;
+            responseWatchdog.current?.wait("reply");
             setError("");
             replyId.current = null;
             assistantTurnId.current = `voice-assistant:${crypto.randomUUID()}`;
             assistantTurnText.current = "";
-            typedTurn.current = null;
           },
           onBotLlmStopped: () => {
             if (!isCurrent()) return;
-            persistAssistantTurn(false);
-            replyId.current = null;
+            assistantGenerated.current = true;
+            responseWatchdog.current?.progress();
+            if (assistantPlaybackFinished.current) finishAssistantReply();
+            else if (!assistantSpeaking.current) {
+              // Inference ending is not proof that buffered audio finished.
+              // Wait for the speech completion event or the progress deadline.
+              setStatus("responding");
+            }
           },
           // Model text arrives first. Playback-aligned TTS events advance the highlight.
           onBotLlmText: (data) => {
             if (!isCurrent() || !data.text) return;
+            openingPending.current = false;
+            responseWatchdog.current?.progress();
             clearResponseTimers();
             assistantTurnText.current += data.text;
             if (bookingComplete.current) bookingConfirmationStarted.current = true;
@@ -474,10 +583,14 @@ export function VoiceAssistant({ email }: { email: string }) {
           },
           onBotTtsText: (data) => {
             if (!isCurrent() || !data.text) return;
+            responseWatchdog.current?.progress();
             clearResponseTimers();
             const id = replyId.current;
             setMessages((previous) => previous.map((m) => m.id === id
               ? { ...m, spoken: Math.min(m.text.length, m.spoken + data.text.length) } : m));
+          },
+          onRemoteAudioLevel: (level) => {
+            if (isCurrent() && level > 0.001 && assistantSpeaking.current) responseWatchdog.current?.progress();
           },
           onLLMFunctionCallStopped: (data) => {
             if (!isCurrent() || data.function_name !== "create_appointment" || data.cancelled) return;
@@ -488,7 +601,8 @@ export function VoiceAssistant({ email }: { email: string }) {
             shutdownTimer.current = setTimeout(() => { void end("booking_completed"); }, 30_000);
           },
           onDisconnected: () => {
-            if (!isCurrent()) return;
+            // During negotiation, connect() owns error classification and retry.
+            if (!isCurrent() || !connected) return;
             persistAssistantTurn(true);
             clearTimeout(timeout);
             void reportConnection("disconnected", statsTransport);
@@ -496,17 +610,35 @@ export function VoiceAssistant({ email }: { email: string }) {
               ? "Voice disconnected. Restoring the same voice conversation…"
               : "The first voice path did not connect. Trying the backup voice path…");
           },
-          onError: () => {
-            if (!isCurrent()) return;
+          onError: (message) => {
+            if (!isCurrent() || !connected) return;
+            if (!(message.data as { fatal?: boolean } | undefined)?.fatal) {
+              setError("The assistant encountered a temporary issue. Waiting for it to recover…");
+              return;
+            }
             persistAssistantTurn(true);
             clearTimeout(timeout);
             void reportConnection("degraded", statsTransport);
-            void recoverVoice("Voice was interrupted. Restoring the same voice conversation…");
+            void recoverVoice(connected
+              ? "Voice was interrupted. Restoring the same voice conversation…"
+              : "The first voice path did not connect. Trying again…");
+          },
+          onServerMessage: (message) => {
+            if (!isCurrent() || !message || typeof message !== "object") return;
+            if (message.type === "voice-opening") {
+              openingPending.current = false;
+              if (message.committed) responseWatchdog.current?.wait("reply");
+              else if (!typedTurn.current) { responseWatchdog.current?.stop(); armIdleTimer(); }
+            }
+            if (message.type === "voice-service-unusable") {
+              if (["authentication", "authorization", "invalid_request"].includes(message.category)) {
+                void failVoice("The voice provider rejected this session. Please try again later or contact the studio.");
+              } else void recoverVoice("The voice provider stopped responding. Reconnecting…");
+            }
           },
           onDeviceError: () => {
             if (!isCurrent()) return;
-            setError("Microphone access is unavailable. Allow microphone access and try the voice call again.");
-            setStatus("error"); void release(true);
+            void failVoice("Microphone access is unavailable. Allow microphone access and try the voice call again.");
           },
           onAvailableMicsUpdated: (devices) => { if (isCurrent()) setMics(devices); },
           onMicUpdated: (device) => {
@@ -524,12 +656,18 @@ export function VoiceAssistant({ email }: { email: string }) {
               void audio.current.play().catch(() => { if (isCurrent()) setNeedsPlayback(true); });
             }
           },
+          onTrackStopped: (track, participant) => {
+            if (isCurrent() && connected && !participant?.local && track.kind === "audio") {
+              void recoverVoice("The assistant's audio connection ended. Reconnecting…");
+            }
+          },
           onUserTranscript: (data) => {
             if (!isCurrent()) return;
             if (data.final) {
               if (data.text.trim()) appendUser(data.text, true);
               setInterim(""); setSpeechPending(null);
               setStatus("processing");
+              responseWatchdog.current?.wait("reply");
               delayTimer.current = setTimeout(() => setError("This is taking a little longer than usual."), 8000);
             } else {
               setInterim(data.text); setSpeechPending("transcribing");
@@ -542,101 +680,146 @@ export function VoiceAssistant({ email }: { email: string }) {
       // Destroy this specific instance so stale listeners cannot affect the next call.
       const callObject = Daily.getCallInstance();
       cleanup.current = async () => {
-        await pc.disconnect().catch(() => {});
-        await callObject?.destroy().catch(() => {});
+        await boundedCleanup(pc.disconnect());
+        await boundedCleanup(callObject?.destroy() || Promise.resolve());
+      };
+      let disconnectedAt = 0;
+      const offline = () => {
+        if (isCurrent()) void recoverVoice("Your network disconnected. Reconnecting…");
+      };
+      const checkNetwork = () => {
+        if (!isCurrent() || !connected) return;
+        const state = transport.peerConnection()?.connectionState;
+        if (state === "failed" || state === "closed") { offline(); return; }
+        if (state === "disconnected") {
+          disconnectedAt ||= Date.now();
+          if (Date.now() - disconnectedAt >= 10_000) offline();
+        } else disconnectedAt = 0;
+      };
+      const networkTimer = setInterval(checkNetwork, 2000);
+      window.addEventListener("offline", offline);
+      window.addEventListener("online", checkNetwork);
+      document.addEventListener("visibilitychange", checkNetwork);
+      networkCleanup.current = () => {
+        clearInterval(networkTimer);
+        window.removeEventListener("offline", offline);
+        window.removeEventListener("online", checkNetwork);
+        document.removeEventListener("visibilitychange", checkNetwork);
       };
       timeout = setTimeout(() => {
         if (!isCurrent()) return;
-        void recoverVoice("Voice could not connect in time. Trying the backup voice path…");
-      }, 20000);
+        if (recoveryAttempt) void failVoice("Voice could not reconnect in time. Your conversation is kept here. Try Reconnect.");
+        else void recoverVoice("Voice could not connect in time. Trying the relay connection…");
+      }, 45_000);
+      connectTimer.current = timeout;
       recoveryTimer.current = setTimeout(() => {
-        if (isCurrent()) setStatus("recovering");
+        if (isCurrent()) setError("Connecting is taking longer than usual…");
       }, 10000);
-      await pc.connect({ webrtcRequestParams: { endpoint: "/api/voice", requestData: {
-        greet: !continuing && !firstText,
+      await pc.connect({ webrtcRequestParams: { endpoint: "/api/voice", timeout: 32_000, requestData: {
+        greet: openingPending.current,
         channel: startMode === "talk" ? "voice" : "push_to_talk",
         conversation_id: conversationId.current,
         session_token: sessionToken.current,
         recovery_attempt: recoveryAttempt,
       } } });
       if (!isCurrent()) return;
-      if (firstText) { await sendText(firstText); setDraft(""); }
+      if (firstText) { await sendText(firstText); if (isCurrent()) setDraft(""); }
     } catch (cause) {
       if (!isCurrent()) return;
       clearTimeout(timeout);
-      if (!(cause instanceof Error && cause.name === "NotAllowedError") && recoveryAttempt === 0) {
+      const httpStatus = cause && typeof cause === "object" && "status" in cause ? Number(cause.status) : 0;
+      if (httpStatus >= 400 && httpStatus < 500) {
+        await failVoice(httpStatus === 429 ? "The assistant is busy. Wait a moment, then use Reconnect." : "The call could not be started. Please end this session and try again.");
+      } else if (!(cause instanceof Error && cause.name === "NotAllowedError") && recoveryAttempt === 0) {
         await recoverVoice("The first voice path failed. Trying the backup voice path…");
       } else {
-        setError(cause instanceof Error && cause.name === "NotAllowedError"
+        await failVoice(cause instanceof Error && cause.name === "NotAllowedError"
           ? "Microphone access was declined. Allow it in your browser and try the voice call again."
-          : "The voice connection is unavailable right now. Please try the call again shortly.");
-        setStatus("error"); await release(true);
+          : "The voice connection is unavailable right now. Use Reconnect to try again shortly.");
       }
+    } finally {
+      if (isCurrent()) startInProgress.current = false;
     }
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     const text = draft.trim();
-    if (!text || sending || status === "connecting") return;
+    if (!text || sending || autoClosing.current || status === "connecting" || status === "recovering") return;
+    const attempt = generation.current;
     setSending(true); setError("");
     try {
-      if (client.current) { await sendText(text); setDraft(""); }
+      if (client.current) { await sendText(text); if (generation.current === attempt) setDraft(""); }
       else await start(modeRef.current, text);
     } catch {
+      if (generation.current !== attempt) return;
       clearResponseTimers();
-      setStatus(client.current ? "listening" : "error");
-      setError("Your message couldn’t be sent through the voice agent. Please try again.");
+      await recoverVoice("Your message was not acknowledged. Reconnecting… Your typed message is still in the box.");
     }
     finally { setSending(false); }
   }
 
   function switchMode(next: Mode) {
+    if (autoClosing.current) return;
     modeRef.current = next; setMode(next); setHolding(false); setError("");
     if (active && client.current) mic(next === "talk");
     else if (conversationId.current) void start(next);
   }
 
   function hold(down: boolean) {
-    if (!active || modeRef.current !== "hold") return;
+    if (!active || autoClosing.current || status === "recovering" || modeRef.current !== "hold") return;
     setHolding(down); mic(down);
   }
 
   function close() { void end("client_ended"); dialog.current?.close(); }
-  const statusLabel = status === "listening"
+  async function reconnect() {
+    if (startInProgress.current || voiceRecoveryInProgress.current) return;
+    if (client.current) recoveryMic.current = wantedMic.current;
+    persistAssistantTurn(true);
+    const nextGeneration = generation.current + 1;
+    await release(true);
+    if (generation.current === nextGeneration) await start(modeRef.current);
+  }
+  async function failVoice(message: string) {
+    if (client.current) recoveryMic.current = wantedMic.current;
+    persistAssistantTurn(true);
+    setSending(false); setStatus("error"); setError(message);
+    setSpeechPending(null); setInterim("");
+    await release(true);
+  }
+  const statusLabel = status === "recovering" && openingPending.current
+    ? "Retrying the voice connection…"
+    : status === "listening"
     ? mode === "hold" && !holding ? "Hold the button to speak or type below" : muted ? "Microphone muted — you can still type" : labels[status]
     : labels[status];
 
   return (
     <>
       <button className={styles.launcher} onClick={() => dialog.current?.showModal()} aria-haspopup="dialog">
-        <span className={styles.launcherIcon}><Mic size={19} aria-hidden="true" /></span>
-        <span>Talk to the studio <small>Voice & chat · AI assistant</small></span><ArrowUpRight size={18} aria-hidden="true" />
+        <span className={styles.launcherVisual} aria-hidden="true"><span className={styles.launcherWave}>{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ animationDelay: `${i * -0.17}s` }} />)}</span></span>
+        <span className={styles.launcherCopy}>Talk with our sales representative<small>Let’s talk · Book an appointment</small></span><ArrowUpRight size={18} aria-hidden="true" />
       </button>
       <dialog ref={dialog} className={styles.dialog} aria-labelledby="voice-title" onCancel={(event) => { event.preventDefault(); close(); }}>
-        <header className={styles.header}><span className={styles.eyebrow}>VIBECODERZZ / YOUR STUDIO ASSISTANT</span><button onClick={close} className={styles.iconButton} aria-label="Close and end conversation"><X size={20} /></button></header>
-        <div className={styles.intro} data-compact={messages.length > 0 || active}>
-          <div className={`${styles.orb} ${status === "speaking" || (active && !muted) ? styles.live : ""}`} aria-hidden="true"><Mic size={29} /></div>
-          <h2 id="voice-title">Good ideas start<br />with a conversation.</h2>
-          {!messages.length && <p>Talk or type. Explore services, ask questions, and find your next step with our AI assistant.</p>}
+        <header className={styles.header}><h2 id="voice-title">Sales Representative</h2><div className={styles.headerActions}>{active && <button className={styles.sound} aria-label={sound ? "Mute representative audio" : "Enable representative audio"} aria-pressed={!sound} onClick={() => setSound(!sound)}>{sound ? <Volume2 size={16} /> : <VolumeX size={16} />}</button>}<button onClick={close} className={styles.iconButton} aria-label="Close and end conversation"><X size={20} /></button></div></header>
+        <div className={styles.callVisual} data-state={status}>
+          <div className={styles.waveform} aria-hidden="true">{Array.from({ length: 27 }, (_, i) => <i key={i} style={{ animationDelay: `${i * -0.13}s`, height: `${12 + (1 - Math.abs(i - 13) / 13) * 34}px` }} />)}</div>
+          <p role="status">{status === "idle" ? "Your next step starts with a conversation." : statusLabel}</p>
         </div>
         <div className={styles.modes} role="group" aria-label="Conversation input">
-          <button aria-pressed={mode === "talk"} disabled={status === "connecting"} onClick={() => switchMode("talk")}><Mic size={15} /> Open mic</button>
-          <button aria-pressed={mode === "hold"} disabled={status === "connecting"} onClick={() => switchMode("hold")}><MicOff size={15} /> Push to talk</button>
+          <button aria-pressed={mode === "talk"} disabled={autoClosing.current || status === "connecting" || status === "recovering"} onClick={() => switchMode("talk")}><Mic size={15} /> Open mic</button>
+          <button aria-pressed={mode === "hold"} disabled={autoClosing.current || status === "connecting" || status === "recovering"} onClick={() => switchMode("hold")}><MicOff size={15} /> Push to talk</button>
         </div>
-        <div className={styles.status} role="status"><span data-active={active} />{statusLabel}<button className={styles.sound} aria-label={sound ? "Mute assistant audio" : "Enable assistant audio"} aria-pressed={!sound} onClick={() => setSound(!sound)}>{sound ? <Volume2 size={15} /> : <VolumeX size={15} />}</button></div>
-        <div className={styles.transcript} ref={transcript} role="log" aria-label="Conversation transcript" aria-live="polite" aria-relevant="additions text">
-          {!messages.length && !interim ? <div className={styles.empty}><span>ROOM FOR YOUR NEXT IDEA</span><p>“Could AI help with my customer enquiries?”</p><p>“I’m looking to build a website.”</p></div> : messages.map((message) => <div className={styles.message} data-role={message.role} key={message.id}><span>{message.role === "user" ? "YOU" : "STUDIO ASSISTANT"}<time>{message.time}</time></span><p>{message.role === "assistant" ? <><span className={styles.spoken}>{message.text.slice(0, message.spoken)}</span><span className={styles.pending}>{message.text.slice(message.spoken)}</span></> : message.text}</p></div>)}
+        {(active || messages.length > 0 || interim) && <div className={styles.transcript} ref={transcript} role="log" aria-label="Conversation transcript" aria-live="polite" aria-relevant="additions text">
+          {!messages.length && !interim ? <div className={styles.empty}><p>You’re connected. Say hello or type below.</p></div> : messages.map((message) => <div className={styles.message} data-role={message.role} key={message.id}><span>{message.role === "user" ? "YOU" : "SALES REPRESENTATIVE"}<time>{message.time}</time></span><p>{message.role === "assistant" ? <><span className={styles.spoken}>{message.text.slice(0, message.spoken)}</span><span className={styles.pending}>{message.text.slice(message.spoken)}</span></> : message.text}</p>{message.interrupted && <small>Reply interrupted by the connection.</small>}</div>)}
           {(interim || speechPending) && <div className={styles.message} data-role="user"><span>YOU · {speechPending === "transcribing" ? "TRANSCRIBING" : "SPEAKING"}</span><p>{interim || (speechPending === "transcribing" ? "Transcribing…" : "Listening…")}</p></div>}
-        </div>
+        </div>}
         {error && <p className={styles.error} role="alert">{error}</p>}
         {needsPlayback && <button className={styles.playback} onClick={() => { void audio.current?.play().then(() => setNeedsPlayback(false)).catch(() => {}); }}><Volume2 size={16} /> Tap to hear the assistant</button>}
-        <form className={styles.composer} onSubmit={submit}><label className={styles.srOnly} htmlFor="studio-message">Your message</label><input id="studio-message" value={draft} maxLength={2000} onChange={(event) => setDraft(event.target.value)} placeholder="Type a message…" autoComplete="off" /><button aria-label="Send message" disabled={!draft.trim() || sending || status === "connecting"} type="submit"><Send size={18} /></button></form>
-        {active && <div className={styles.devices}><label htmlFor="studio-mic">Microphone</label><select id="studio-mic" value={selectedMic} onChange={(event) => { setSelectedMic(event.target.value); client.current?.updateMic(event.target.value); }}><option value="">System default</option>{mics.filter((device) => device.deviceId).map((device) => <option key={device.deviceId} value={device.deviceId}>{device.label || "Microphone"}</option>)}</select></div>}
+        {active && status !== "recovering" && <form className={styles.composer} onSubmit={submit}><label className={styles.srOnly} htmlFor="studio-message">Your message</label><input id="studio-message" disabled={autoClosing.current} value={draft} maxLength={2000} onChange={(event) => setDraft(event.target.value)} placeholder="Type a message…" autoComplete="off" /><button aria-label="Send message" disabled={autoClosing.current || !draft.trim() || sending} type="submit"><Send size={18} /></button></form>}
+        {active && <details className={styles.devices}><summary>Microphone settings</summary><div><label htmlFor="studio-mic">Microphone</label><select id="studio-mic" disabled={autoClosing.current || status === "recovering"} value={selectedMic} onChange={(event) => { setSelectedMic(event.target.value); client.current?.updateMic(event.target.value); }}><option value="">System default</option>{mics.filter((device) => device.deviceId).map((device) => <option key={device.deviceId} value={device.deviceId}>{device.label || "Microphone"}</option>)}</select></div></details>}
         <div className={styles.controls}>
-          {active ? <>{mode === "talk" && <button className={styles.mute} aria-pressed={muted} onClick={() => mic(muted)}>{muted ? <MicOff size={18} /> : <Mic size={18} />}{muted ? "Unmute mic" : "Mute mic"}</button>}{mode === "hold" && <button className={styles.hold} aria-pressed={holding} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); hold(true); }} onPointerUp={() => hold(false)} onPointerCancel={() => hold(false)} onLostPointerCapture={() => hold(false)} onBlur={() => hold(false)} onKeyDown={(event) => { if ((event.key === " " || event.key === "Enter") && !event.repeat) { event.preventDefault(); hold(true); } }} onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); hold(false); } }}><Mic size={18} />{holding ? "Listening…" : "Hold to talk"}</button>}<button className={styles.end} onClick={() => void end("client_ended")}><PhoneOff size={18} /> End</button></> : status === "connecting" ? <button className={styles.start} onClick={() => void end("connection_cancelled")}>Connecting… Cancel</button> : <button className={styles.start} onClick={() => void start()}><Mic size={18} />Start talking<ArrowUpRight size={18} /></button>}
+          {active ? <>{mode === "talk" && <button className={styles.mute} disabled={autoClosing.current || status === "recovering"} aria-pressed={muted} onClick={() => mic(muted)}>{muted ? <MicOff size={18} /> : <Mic size={18} />}{muted ? "Unmute mic" : "Mute mic"}</button>}{mode === "hold" && <button className={styles.hold} disabled={autoClosing.current || status === "recovering"} aria-pressed={holding} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); hold(true); }} onPointerUp={() => hold(false)} onPointerCancel={() => hold(false)} onLostPointerCapture={() => hold(false)} onBlur={() => hold(false)} onKeyDown={(event) => { if ((event.key === " " || event.key === "Enter") && !event.repeat) { event.preventDefault(); hold(true); } }} onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); hold(false); } }}><Mic size={18} />{holding ? "Listening…" : "Hold to talk"}</button>}<button className={styles.end} onClick={() => void end("client_ended")}><PhoneOff size={18} /> End</button></> : status === "connecting" ? <button className={styles.start} onClick={() => void end("connection_cancelled")}>Cancel connection</button> : <><button className={styles.start} onClick={() => void (conversationId.current ? reconnect() : start())}><Mic size={18} />{conversationId.current ? "Reconnect" : "Start talking"}<ArrowUpRight size={18} /></button>{conversationId.current && <button className={styles.end} onClick={() => void end("client_ended")}><PhoneOff size={18} />End</button>}</>}
         </div>
-        <footer className={styles.footer}><p>Starting shares your messages and enabled microphone audio with Google Gemini. We save text transcripts and lead progress for studio follow-up, but never raw audio. If you book, confirmed contact and appointment details are sent to Cal.com.</p><a href={`mailto:${email}`}>Prefer email? Talk to a person <ArrowUpRight size={12} /></a></footer>
         <audio ref={audio} autoPlay playsInline muted={!sound} />
       </dialog>
     </>

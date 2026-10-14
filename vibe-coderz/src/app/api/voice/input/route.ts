@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         text: input.text,
       }),
       cache: "no-store",
-      signal: AbortSignal.timeout(7000),
+      signal: AbortSignal.timeout(12_000),
     });
     const result = response.ok ? await response.json() : { ok: false };
     return NextResponse.json(result, { status: response.status });

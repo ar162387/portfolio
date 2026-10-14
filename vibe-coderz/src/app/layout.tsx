@@ -49,7 +49,7 @@ export default function RootLayout({
         <StudioExperience />
         <main id="main">{children}</main>
         <Footer />
-        {process.env.VOICE_AGENT_URL && <VoiceAssistant email={studio.email} />}
+        {process.env.VOICE_AGENT_URL && <VoiceAssistant />}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

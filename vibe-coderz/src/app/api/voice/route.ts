@@ -11,7 +11,10 @@ const salesServiceSlugs = new Set(["voice-agents", "custom-software"]);
 async function forward(request: NextRequest) {
   const backend = process.env.VOICE_AGENT_URL;
   const token = process.env.VOICE_AGENT_TOKEN;
-  if (!backend || !token) return unavailable();
+  if (!backend || !token) {
+    console.error("Voice signaling is missing backend configuration");
+    return unavailable();
+  }
   // Browser requests stay same-origin; the backend credential never reaches the client.
   const origin = request.headers.get("origin");
   let sameOrigin = false;
@@ -56,6 +59,7 @@ async function forward(request: NextRequest) {
       body, cache: "no-store", signal: AbortSignal.timeout(request.method === "GET" ? 4000 : 30000),
     });
     if (!response.ok) {
+      console.error("Voice signaling backend rejected request", { method: request.method, status: response.status });
       const status = response.status === 429 ? 429 : response.status === 400 || response.status === 422 ? 400 : 503;
       return NextResponse.json({ error: status === 429 ? "The assistant is busy. Please try again shortly." : "Voice is temporarily unavailable." }, { status });
     }
@@ -68,7 +72,9 @@ async function forward(request: NextRequest) {
     }
     if (response.status === 204) return new Response(null, { status: 204 });
     return NextResponse.json(await response.json());
-  } catch {
+  } catch (cause) {
+    // Log only the failure category; URLs, credentials, SDP and transcripts stay private.
+    console.error("Voice signaling request failed", { method: request.method, errorType: cause instanceof Error ? cause.name : "unknown" });
     return unavailable();
   }
 }
