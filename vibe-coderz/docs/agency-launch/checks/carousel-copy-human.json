@@ -1,0 +1,27 @@
+{
+  "source": "docs/agency-launch/checks/carousel-copy-clean.txt",
+  "checks": {
+    "BURSTINESS": {
+      "score": 84.7,
+      "detail": "variation 0.63 across 40 sentences (want 0.55+)"
+    },
+    "SPECIFICITY": {
+      "score": 100.0,
+      "detail": "25 concrete markers, 7.2 per 100 words (want 4+)"
+    },
+    "SLOP DENSITY": {
+      "score": 100.0,
+      "detail": "0 stock terms, 0.0 per 100 words"
+    },
+    "FINGERPRINT": {
+      "score": 100.0,
+      "detail": "0 invisible, 0 em dash, 0 curly quote, 0 ellipsis, 0 hard space"
+    },
+    "VOICE": {
+      "score": 46.7,
+      "detail": "0.9 contractions, 2.3 personal pronouns per 100 words, 0 structural tell(s)"
+    }
+  },
+  "human_score": 70.5,
+  "verdict": "REVIEW"
+}

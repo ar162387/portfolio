@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-export const alt = "Vibecoderzz — Software, AI & Growth Studio";
+export const alt = "Vibecoderzz — AI receptionists and custom business software";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export default function Image() {
@@ -19,23 +19,23 @@ export default function Image() {
       <div style={{ display: "flex", fontSize: 30 }}>
         vibecoderzz✳
         <span style={{ marginLeft: 290, fontSize: 17, color: "#737967" }}>
-          SOFTWARE / AI / GROWTH
+          AI RECEPTIONISTS / CUSTOM CRM
         </span>
       </div>
       <div
         style={{
           display: "flex",
           flexDirection: "column",
-          fontSize: 105,
+          fontSize: 90,
           letterSpacing: -6,
           lineHeight: 1,
         }}
       >
-        <span>Good ideas.</span>
-        <span style={{ color: "#c74929" }}>Serious pull.</span>
+        <span>You’re needed</span>
+        <span style={{ color: "#c74929" }}>elsewhere.</span>
       </div>
       <div style={{ display: "flex", fontSize: 23 }}>
-        Independent software & AI studio. Central London → Worldwide.
+        AI receptionists, with a team behind the agent. USA / UK / Australia.
       </div>
     </div>,
     size,

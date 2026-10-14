@@ -65,6 +65,11 @@ async function collectConnectionStats(transport: StatsTransport) {
 
 export function VoiceAssistant() {
   const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const open = () => { if (!dialog.current?.open) dialog.current?.showModal(); };
+    window.addEventListener("studio:open-assistant", open);
+    return () => window.removeEventListener("studio:open-assistant", open);
+  }, []);
   const audio = useRef<HTMLAudioElement>(null);
   const client = useRef<PipecatClient | null>(null);
   const cleanup = useRef<(() => Promise<void>) | null>(null);

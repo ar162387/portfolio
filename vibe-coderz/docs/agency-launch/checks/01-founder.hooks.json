@@ -1,0 +1,89 @@
+[
+  {
+    "hook": "Your phone doesn't know it's 7 pm.",
+    "checks": {
+      "LENGTH": {
+        "score": 100.0,
+        "detail": "7 words, 34 chars, ~2.5s spoken (want 5-12 words)"
+      },
+      "SPECIFICITY": {
+        "score": 75,
+        "detail": "1 concrete marker(s): 7"
+      },
+      "STAKES": {
+        "score": 70.0,
+        "detail": "1 tension marker(s): doesn't"
+      },
+      "FRONTLOAD": {
+        "score": 70.0,
+        "detail": "payload at word 3; weak opener \"yo\""
+      },
+      "ADDRESS": {
+        "score": 100.0,
+        "detail": "speaks to the viewer"
+      }
+    },
+    "weakest": "STAKES",
+    "flags": [],
+    "score": 77.8,
+    "verdict": "STRONG"
+  },
+  {
+    "hook": "Your 2 pm client can't pause for calls.",
+    "checks": {
+      "LENGTH": {
+        "score": 100.0,
+        "detail": "8 words, 39 chars, ~2.9s spoken (want 5-12 words)"
+      },
+      "SPECIFICITY": {
+        "score": 75,
+        "detail": "1 concrete marker(s): 2"
+      },
+      "STAKES": {
+        "score": 70.0,
+        "detail": "1 tension marker(s): can't"
+      },
+      "FRONTLOAD": {
+        "score": 70.0,
+        "detail": "payload at word 2; weak opener \"yo\""
+      },
+      "ADDRESS": {
+        "score": 100.0,
+        "detail": "speaks to the viewer"
+      }
+    },
+    "weakest": "STAKES",
+    "flags": [],
+    "score": 77.8,
+    "verdict": "STRONG"
+  },
+  {
+    "hook": "You don't need another AI tool to manage.",
+    "checks": {
+      "LENGTH": {
+        "score": 100.0,
+        "detail": "8 words, 41 chars, ~2.9s spoken (want 5-12 words)"
+      },
+      "SPECIFICITY": {
+        "score": 15.0,
+        "detail": "0 concrete marker(s) - no number, no name, nothing checkable"
+      },
+      "STAKES": {
+        "score": 70.0,
+        "detail": "1 tension marker(s): don't"
+      },
+      "FRONTLOAD": {
+        "score": 70.0,
+        "detail": "payload at word 2; weak opener \"yo\""
+      },
+      "ADDRESS": {
+        "score": 100.0,
+        "detail": "speaks to the viewer"
+      }
+    },
+    "weakest": "SPECIFICITY",
+    "flags": [],
+    "score": 48.6,
+    "verdict": "WEAK"
+  }
+]

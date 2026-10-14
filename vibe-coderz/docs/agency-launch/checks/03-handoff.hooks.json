@@ -1,0 +1,89 @@
+[
+  {
+    "hook": "You don't need 3 inboxes for one enquiry.",
+    "checks": {
+      "LENGTH": {
+        "score": 100.0,
+        "detail": "8 words, 41 chars, ~2.9s spoken (want 5-12 words)"
+      },
+      "SPECIFICITY": {
+        "score": 75,
+        "detail": "1 concrete marker(s): 3"
+      },
+      "STAKES": {
+        "score": 70.0,
+        "detail": "1 tension marker(s): don't"
+      },
+      "FRONTLOAD": {
+        "score": 70.0,
+        "detail": "payload at word 2; weak opener \"yo\""
+      },
+      "ADDRESS": {
+        "score": 100.0,
+        "detail": "speaks to the viewer"
+      }
+    },
+    "weakest": "STAKES",
+    "flags": [],
+    "score": 77.8,
+    "verdict": "STRONG"
+  },
+  {
+    "hook": "Watch the enquiry after the call ends.",
+    "checks": {
+      "LENGTH": {
+        "score": 100.0,
+        "detail": "7 words, 38 chars, ~2.5s spoken (want 5-12 words)"
+      },
+      "SPECIFICITY": {
+        "score": 15.0,
+        "detail": "0 concrete marker(s) - no number, no name, nothing checkable"
+      },
+      "STAKES": {
+        "score": 20.0,
+        "detail": "0 tension marker(s) - nothing is at stake in this line"
+      },
+      "FRONTLOAD": {
+        "score": 30.0,
+        "detail": "no payload word anywhere in the line"
+      },
+      "ADDRESS": {
+        "score": 90.0,
+        "detail": "imperative opener (\"watch\")"
+      }
+    },
+    "weakest": "SPECIFICITY",
+    "flags": [],
+    "score": 36.6,
+    "verdict": "WEAK"
+  },
+  {
+    "hook": "Your phone rang. What's the next step?",
+    "checks": {
+      "LENGTH": {
+        "score": 100.0,
+        "detail": "7 words, 38 chars, ~2.5s spoken (want 5-12 words)"
+      },
+      "SPECIFICITY": {
+        "score": 75,
+        "detail": "1 concrete marker(s): What"
+      },
+      "STAKES": {
+        "score": 20.0,
+        "detail": "0 tension marker(s) - nothing is at stake in this line"
+      },
+      "FRONTLOAD": {
+        "score": 0.0,
+        "detail": "no payload word anywhere in the line; weak opener \"yo\""
+      },
+      "ADDRESS": {
+        "score": 100.0,
+        "detail": "speaks to the viewer"
+      }
+    },
+    "weakest": "FRONTLOAD",
+    "flags": [],
+    "score": 35.4,
+    "verdict": "WEAK"
+  }
+]

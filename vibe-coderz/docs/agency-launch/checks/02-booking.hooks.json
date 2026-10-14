@@ -1,0 +1,89 @@
+[
+  {
+    "hook": "Don't call Tuesday at 2 pm booked yet.",
+    "checks": {
+      "LENGTH": {
+        "score": 100.0,
+        "detail": "8 words, 38 chars, ~2.9s spoken (want 5-12 words)"
+      },
+      "SPECIFICITY": {
+        "score": 100.0,
+        "detail": "2 concrete marker(s): 2, Tuesday"
+      },
+      "STAKES": {
+        "score": 70.0,
+        "detail": "1 tension marker(s): don't"
+      },
+      "FRONTLOAD": {
+        "score": 100.0,
+        "detail": "payload at word 1"
+      },
+      "ADDRESS": {
+        "score": 90.0,
+        "detail": "imperative opener (\"don't\")"
+      }
+    },
+    "weakest": "STAKES",
+    "flags": [],
+    "score": 83.2,
+    "verdict": "STRONG"
+  },
+  {
+    "hook": "Watch the calendar before you say booked.",
+    "checks": {
+      "LENGTH": {
+        "score": 100.0,
+        "detail": "7 words, 41 chars, ~2.5s spoken (want 5-12 words)"
+      },
+      "SPECIFICITY": {
+        "score": 15.0,
+        "detail": "0 concrete marker(s) - no number, no name, nothing checkable"
+      },
+      "STAKES": {
+        "score": 70.0,
+        "detail": "1 tension marker(s): before"
+      },
+      "FRONTLOAD": {
+        "score": 100.0,
+        "detail": "payload at word 4"
+      },
+      "ADDRESS": {
+        "score": 100.0,
+        "detail": "speaks to the viewer"
+      }
+    },
+    "weakest": "SPECIFICITY",
+    "flags": [],
+    "score": 52.2,
+    "verdict": "OK"
+  },
+  {
+    "hook": "Your caller asked for Tuesday. That isn't booked.",
+    "checks": {
+      "LENGTH": {
+        "score": 100.0,
+        "detail": "8 words, 49 chars, ~2.9s spoken (want 5-12 words)"
+      },
+      "SPECIFICITY": {
+        "score": 100.0,
+        "detail": "2 concrete marker(s): That, Tuesday"
+      },
+      "STAKES": {
+        "score": 20.0,
+        "detail": "0 tension marker(s) - nothing is at stake in this line"
+      },
+      "FRONTLOAD": {
+        "score": 0.0,
+        "detail": "no payload word anywhere in the line; weak opener \"yo\""
+      },
+      "ADDRESS": {
+        "score": 100.0,
+        "detail": "speaks to the viewer"
+      }
+    },
+    "weakest": "FRONTLOAD",
+    "flags": [],
+    "score": 38.4,
+    "verdict": "WEAK"
+  }
+]

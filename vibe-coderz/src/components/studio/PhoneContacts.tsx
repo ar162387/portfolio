@@ -1,8 +1,7 @@
 import { Phone } from "lucide-react";
 
 const contacts = [
-  { country: "United Kingdom", code: "UK", flag: "🇬🇧", number: "+44 7459 137977", digits: "447459137977" },
-  { country: "Pakistan", code: "PK", flag: "🇵🇰", number: "+92 324 6882889", digits: "923246882889" },
+  { country: "United Kingdom", flag: "🇬🇧", number: "+44 7459 137977", digits: "447459137977" },
 ];
 
 function WhatsAppIcon() {
@@ -16,11 +15,11 @@ function WhatsAppIcon() {
 export function PhoneContacts({ placement }: { placement: "header" | "footer" | "contact" }) {
   return (
     <div className={`phone-contacts phone-contacts--${placement}`} role="group" aria-label="Contact us on WhatsApp or by phone">
-      {contacts.map(({ country, code, flag, number, digits }) => (
+      {contacts.map(({ country, flag, number, digits }) => (
         <div className="phone-contact-row" key={digits}>
           <a className="phone-number" href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${country}: ${number}`}>
-            <span className="phone-country" aria-hidden="true"><span>{flag}</span><small>{code}</small></span>
-            <span className="phone-copy"><span className="phone-country-name">{country}</span><span>{number}</span></span>
+            <span className="phone-country" aria-hidden="true"><span>{flag}</span></span>
+            <span className="phone-copy"><span>{number}</span></span>
           </a>
           <a className="phone-action phone-whatsapp" href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer" aria-label={`Message ${country} on WhatsApp`} title={`WhatsApp ${country}`}>
             <WhatsAppIcon />

@@ -1,11 +1,9 @@
 import Link from "next/link";
-import { AutomationColumn } from "./AutomationColumn";
-import { DevelopmentColumn } from "./DevelopmentColumn";
-import { SeoColumn } from "./SeoColumn";
 import { MethodJourney, MotionControl } from "./Experience";
-import { ArrowUpRight } from "lucide-react";
-import { articles, studio } from "@/data/studio";
+import { ArrowUpRight, AudioLines, Database } from "lucide-react";
+import { studio } from "@/data/studio";
 import { PhoneContacts } from "./PhoneContacts";
+import { ThemeControl } from "./ThemeControl";
 export function Button({
   href,
   children,
@@ -55,23 +53,21 @@ export function ServicesSection() {
     <section className="services-section shell" id="services">
       <div className="section-heading">
         <div>
-          <Label>01 / WHAT WE DO</Label>
+          <Label>THE FRONT DESK. AND WHAT’S BEHIND IT.</Label>
           <h2>
-            Built for the way
+            A good conversation.
             <br />
-            you want to <em>work.</em>
+            A useful <em>follow-through.</em>
           </h2>
         </div>
         <p>
-          One studio for the software you need,
-          <br className="desktop-break" /> the work you can automate, and
-          <br className="desktop-break" /> the growth you can understand.
+          Start with your calls. If the work behind them needs attention too,
+          we can help with that. Each has its own scope.
         </p>
       </div>
-      <div className="service-columns">
-        <AutomationColumn />
-        <DevelopmentColumn />
-        <SeoColumn />
+      <div className="voice-offer-layout">
+        <article className="voice-offer-primary"><AudioLines size={35} strokeWidth={1.2} /><span className="eyebrow">THE FRONT DESK</span><h3>Someone to<br /><em>take the call.</em></h3><p>An AI receptionist shaped around your business. Routine answers, enquiry details and booking flows, with a route to your team when it’s needed.</p><ul><li>Overflow and after-hours coverage, as agreed</li><li>Booking through supported calendars</li><li>A defined plan for testing and ongoing care</li></ul><Link className="text-link" href="/services/voice-agents">Explore AI receptionists <ArrowUpRight size={17} /></Link></article>
+        <article className="voice-offer-secondary"><Database size={29} strokeWidth={1.3} /><span className="eyebrow">BEHIND THE DESK</span><h3>Less chasing.<br /><em>More doing.</em></h3><p>Custom CRM, booking and invoicing software for the work that follows. We start with the process that’s getting in your way.</p><p className="offer-aside">Your existing tools may already do the job. We’ll check before proposing a build.</p><Link className="text-link" href="/services/custom-software">Explore business software <ArrowUpRight size={17} /></Link></article>
       </div>
     </section>
   );
@@ -79,61 +75,25 @@ export function ServicesSection() {
 export function Process() {
   return <MethodJourney />;
 }
-export function InsightsSection() {
-  return (
-    <section className="insights-section shell">
-      <div className="section-heading">
-        <div>
-          <Label>04 / STUDIO NOTES</Label>
-          <h2>A little perspective.</h2>
-        </div>
-        <Link className="text-link" href="/insights">
-          All insights <ArrowUpRight size={17} />
-        </Link>
-      </div>
-      <div className="article-grid">
-        {articles.map((a, i) => (
-          <Link
-            href={`/insights/${a.slug}`}
-            className="article-card"
-            key={a.slug}
-          >
-            <div className={`article-art article-art-${i}`} aria-hidden="true">
-              <span>
-                {["{ → }", "human + machine", "find. understand. act."][i]}
-              </span>
-              <span className="note-no">NOTE / 00{i + 1}</span>
-            </div>
-            <p className="eyebrow">{a.category} · 3 MIN READ</p>
-            <h3>{a.title}</h3>
-            <span className="text-link">
-              Read the note <ArrowUpRight size={16} />
-            </span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-export function CTA() {
+export function CTA({ software = false }: { software?: boolean }) {
   return (
     <section className="cta-section">
       <div className="shell cta-inner">
         <div>
-          <Label>GOOD THINGS START WITH A CONVERSATION</Label>
+          <Label>{software ? "LET’S FOLLOW THE WORK" : "YOUR BUSINESS. YOUR CALLS."}</Label>
           <h2>
-            Big idea?
+            {software ? "Where does" : "What happens when"}
             <br />
-            Let’s give it <em>gravity.</em>
+            {software ? <>the work <em>get stuck?</em></> : <>you can’t <em>pick up?</em></>}
           </h2>
         </div>
         <div>
           <p>
-            Tell us what you’re thinking.
+            {software ? "Show us the spreadsheet. Or the five tabs." : "Tell us what callers need from you."}
             <br />
-            We’ll help you find the next move.
+            {software ? "We’ll find a useful first workflow to fix." : "We’ll work through a relevant demo together."}
           </p>
-          <Button href="/contact">Start a conversation</Button>
+          <Button href={software ? "/contact?service=software" : "/contact"}>{software ? "Discuss your workflow" : "Request your demo"}</Button>
         </div>
         <span className="cta-orbit" aria-hidden="true" />
       </div>
@@ -148,14 +108,15 @@ export function Footer() {
           vibecoderzz<span className="brand-dot">✳</span>
         </Link>
         <p>
-          Independent minds.
+          AI receptionists.
           <br />
-          Connected possibilities.
+          Custom booking & invoicing software.
         </p>
         <div>
           <a href={`mailto:${studio.email}`}>{studio.email} ↗</a>
           <PhoneContacts placement="footer" />
-          <span>Central London, United Kingdom · Working worldwide</span>
+          <span>Serving businesses in the USA, UK & Australia</span>
+          <a href="https://www.instagram.com/vibecoderzai/" target="_blank" rel="noopener noreferrer">Follow the founder · @vibecoderzai ↗</a>
         </div>
       </div>
       <div className="footer-bottom">
@@ -168,6 +129,10 @@ export function Footer() {
           <Link href="/privacy">Privacy</Link>
           <a href="#cookie-settings">Cookie settings</a>
         </nav>
+      </div>
+      <div className="footer-preferences">
+        <span>Appearance</span>
+        <ThemeControl />
         <MotionControl />
       </div>
     </footer>

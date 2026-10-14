@@ -1,9 +1,10 @@
 import { StudioPrinciples } from "@/components/studio/Experience";
 import { PageIntro, Label, Process, CTA } from "@/components/studio/Shared";
 import { pageMetadata } from "@/lib/seo";
+import { FounderNote } from "@/components/studio/VoiceSections";
 export const metadata = pageMetadata(
   "The Studio",
-  "An independent software studio in Central London, bringing product thinking and hands-on engineering to custom software, AI, and digital experiences.",
+  "Meet Shah Abdur Rehman, the founder of Vibecoderzz, building AI receptionists and custom CRM, booking and invoicing software for service businesses.",
   "/about",
 );
 export default function About() {
@@ -11,24 +12,25 @@ export default function About() {
     <>
       <PageIntro
         label="THE STUDIO / OUR POINT OF VIEW"
-        title="Independent minds. Shared ambition."
-        description="Vibecoderzz began with a developer’s portfolio and grew into a studio with a broader purpose: building the systems that help businesses work better."
+        title="There’s a person behind the agent."
+        description="I’m Shah Abdur Rehman. I build AI receptionists and business software, and I care about what happens when someone asks the question we didn’t rehearse."
       />
       <section className="about-statement">
         <div className="shell">
           <Label>BUILT FROM THE WORK</Label>
           <h2>
-            Stay curious about the problem.
+            The calendar is full.
             <br />
-            Be precise about the solution.
+            The phone is ringing.
             <br />
-            <em>Care about the details.</em>
+            <em>Something has to give.</em>
           </h2>
           <p>
-            Based in Central London and working with clients worldwide, our practice
-            connects software development, AI automation, and search visibility.
-            We bring those disciplines together because your business needs them
-            to work together.
+            Service businesses have real work to do. We focus on the moments
+            around it: the enquiry that needs an answer, the booking that needs
+            a place, and the details someone has to carry into the next step.
+            Voice agents are our focus. Custom software helps where the
+            workflow needs more than an integration.
           </p>
         </div>
       </section>
@@ -46,6 +48,9 @@ export default function About() {
             make the decisions clear, and build something people can actually
             use.
           </p>
+          <a className="text-link" href="https://www.instagram.com/vibecoderzai/" target="_blank" rel="noopener noreferrer">
+            Follow the builds · @vibecoderzai ↗
+          </a>
         </div>
         <aside className="detail-aside">
           <Label>OUR WORKING PRINCIPLES</Label>
@@ -56,6 +61,7 @@ export default function About() {
           </p>
         </aside>
       </section>
+      <FounderNote />
       <StudioPrinciples />
       <Process />
       <CTA />

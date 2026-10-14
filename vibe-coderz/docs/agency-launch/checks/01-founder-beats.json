@@ -1,0 +1,155 @@
+{
+  "wpm": 165,
+  "target": 32.0,
+  "total_seconds": 30.91,
+  "total_words": 85,
+  "beats": [
+    {
+      "n": 1,
+      "start": 0.0,
+      "dur": 2.55,
+      "words": 7,
+      "text": "Your phone doesn't know it's 7 pm.",
+      "concrete": 1,
+      "label": "HOOK",
+      "flags": []
+    },
+    {
+      "n": 2,
+      "start": 2.55,
+      "dur": 1.09,
+      "words": 3,
+      "text": "It rings anyway.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 3,
+      "start": 3.64,
+      "dur": 1.82,
+      "words": 5,
+      "text": "Maybe you're finishing a job",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 4,
+      "start": 5.45,
+      "dur": 1.82,
+      "words": 5,
+      "text": "Or you've finally sat down",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 5,
+      "start": 7.27,
+      "dur": 1.82,
+      "words": 5,
+      "text": "And somebody needs an appointment.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 6,
+      "start": 9.09,
+      "dur": 0.73,
+      "words": 2,
+      "text": "I'm Shah.",
+      "concrete": 1,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 7,
+      "start": 9.82,
+      "dur": 2.55,
+      "words": 7,
+      "text": "I build AI receptionists for service businesses",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 8,
+      "start": 12.36,
+      "dur": 3.64,
+      "words": 10,
+      "text": "Around the answers and booking rules your team actually uses.",
+      "concrete": 0,
+      "label": "MID",
+      "flags": []
+    },
+    {
+      "n": 9,
+      "start": 16.0,
+      "dur": 1.45,
+      "words": 4,
+      "text": "Then we test them.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 10,
+      "start": 17.45,
+      "dur": 1.45,
+      "words": 4,
+      "text": "What if Tuesday's full?",
+      "concrete": 1,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 11,
+      "start": 18.91,
+      "dur": 2.55,
+      "words": 7,
+      "text": "What if the caller changes their mind?",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 12,
+      "start": 21.45,
+      "dur": 3.64,
+      "words": 10,
+      "text": "You'll see those tests here, including what needs a person.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 13,
+      "start": 25.09,
+      "dur": 2.55,
+      "words": 7,
+      "text": "There's a call example on my website.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 14,
+      "start": 27.64,
+      "dur": 3.27,
+      "words": 9,
+      "text": "For the phone that doesn't know it's 7 pm.",
+      "concrete": 1,
+      "label": "CTA",
+      "flags": []
+    }
+  ],
+  "notes": [
+    "Beats 2-4 have nothing concrete in them. Put a number, a name or a price in one of them.",
+    "Beats 7-9 have nothing concrete in them. Put a number, a name or a price in one of them.",
+    "Beats 11-13 have nothing concrete in them. Put a number, a name or a price in one of them.",
+    "Loops: the last beat repeats \"7, doesn't, it's\" from the hook. Second watches are free reach.",
+    "Length is on target (30.9s against 32.0s)."
+  ]
+}

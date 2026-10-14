@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { services, projects, articles } from "@/data/studio";
+import { services, projects } from "@/data/studio";
 import { absolute } from "@/lib/seo";
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -7,12 +7,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/services",
     "/work",
     "/about",
-    "/insights",
     "/contact",
     "/privacy",
     ...services.map((s) => `/services/${s.slug}`),
     ...projects.map((p) => `/work/${p.id}`),
-    ...articles.map((a) => `/insights/${a.slug}`),
   ].map((path) => ({
     url: absolute(path),
     changeFrequency: "monthly",

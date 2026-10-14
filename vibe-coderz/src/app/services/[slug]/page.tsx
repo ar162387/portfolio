@@ -4,6 +4,8 @@ import Link from "next/link";
 import { services, studio } from "@/data/studio";
 import { PageIntro, Label, Button, CTA } from "@/components/studio/Shared";
 import { pageMetadata, jsonLd, absolute } from "@/lib/seo";
+import { CareSection, DemoSection } from "@/components/studio/VoiceSections";
+import { CallExample } from "@/components/studio/CallExample";
 export function generateStaticParams() {
   return services.map((s) => ({ slug: s.slug }));
 }
@@ -36,24 +38,22 @@ export default async function ServicePage({
         <span>{s.name}</span>
       </nav>
       <PageIntro
-        label={`${s.code} / ${s.group.toUpperCase()}`}
-        title={s.name}
+        label={s.slug === "voice-agents" ? "AI VOICE RECEPTIONISTS / THE FRONT DESK" : "CUSTOM CRM & SOFTWARE / BEHIND THE DESK"}
+        title={s.slug === "voice-agents" ? "You’re needed elsewhere. Your callers still need you." : "The call is over. The admin doesn’t have to take all day."}
         description={s.summary}
       />
       <section className="detail-layout shell">
         <div className="detail-body">
-          <h2>Built around the work that matters.</h2>
+          <h2>{s.slug === "voice-agents" ? "A receptionist built around your working day." : "From enquiry to booking and invoice."}</h2>
           <p>{s.detail}</p>
-          <h2>What we can deliver</h2>
+          <h2>{s.slug === "voice-agents" ? "What goes into a useful call." : "What your team needs to get the job done."}</h2>
           <DeliveryBlueprint
             items={s.deliverables}
             group={s.group}
             service={s.slug}
           />
           <p>
-            Scope, integrations, and handover are agreed together before
-            development begins. We make the decisions and trade-offs visible
-            throughout the project.
+            {s.slug === "voice-agents" ? "An appointment request stays a request until it is confirmed. We agree the actions your agent can take, test the connections and decide what happens when it needs a person." : "We agree the workflow, integrations and handover before development begins. Your team sees the working product along the way, so the build stays close to the work."}
           </p>
           <Link href="/work" className="text-link">
             Explore our project work ↗
@@ -63,14 +63,15 @@ export default async function ServicePage({
           <Label>IS THIS FOR YOU?</Label>
           <h3>A good fit for</h3>
           <p>{s.fit}</p>
-          <Button href="/contact">Discuss your project</Button>
+          <Button href={s.slug === "voice-agents" ? "/contact" : "/contact?service=software"}>{s.slug === "voice-agents" ? "Request your demo" : "Discuss your workflow"}</Button>
         </aside>
       </section>
+      {s.slug === "voice-agents" && <><section className="voice-service-heading shell"><Label>FROM HELLO TO A USEFUL NEXT STEP</Label><h2>Follow the enquiry.</h2><p>Explore an illustrated call flow. Then tell us what your own callers need.</p></section><div className="voice-example-detail"><CallExample /></div><DemoSection /><CareSection /></>}
       <section className="shell page-content">
-        <Label>RELATED SERVICES</Label>
+        <Label>{s.slug === "voice-agents" ? "SOFTWARE FOR THE NEXT STEP" : "HELP WITH THE FIRST ENQUIRY"}</Label>
         <div className="service-links">
           {services
-            .filter((x) => x.group === s.group && x.slug !== s.slug)
+            .filter((x) => x.slug !== s.slug)
             .map((x) => (
               <Link key={x.slug} href={`/services/${x.slug}`}>
                 {x.name}
@@ -95,7 +96,7 @@ export default async function ServicePage({
           }),
         }}
       />
-      <CTA />
+      <CTA software={s.slug === "custom-software"} />
     </>
   );
 }

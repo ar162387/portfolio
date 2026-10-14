@@ -1,6 +1,6 @@
-# Vibecoderzz — software, AI & growth studio
+# Vibecoderzz — AI receptionists & custom business software
 
-A multi-page studio website built with Next.js 16, React 19, TypeScript, and Tailwind CSS. The visual identity combines warm ivory, ink, burnt orange, editorial typography, and a contained orbital hero.
+A multi-page studio website built with Next.js 16, React 19, TypeScript, and Tailwind CSS. The two public offers are AI voice receptionists and custom CRM, booking and invoicing software, serving businesses in the USA, UK and Australia. The visual identity combines warm ivory, ink, burnt orange, editorial typography, and a contained orbital hero.
 
 ## Run locally
 
@@ -39,7 +39,9 @@ PostgreSQL on the planned AWS EC2 backend; the Vercel site only renders and prox
 - `src/app/experience.css`: interaction states and motion treatments.
 - `src/app/globals.css`: responsive design system.
 
-There are 26 public content pages: home, services, work, studio, insights, contact, 12 service details, five case studies, and three editorial notes. The old `/resume` route remains accessible with noindex metadata and no automatic print dialog.
+The public content includes home, services, work, studio, contact, two service details, five case studies, and privacy. Retired service routes redirect to the current services overview, and retired insights routes redirect to home. The old `/resume` route remains accessible with noindex metadata and no automatic print dialog.
+
+See `docs/positioning-blueprint.md` and `docs/instagram-positioning.md` for the shared website and founder-brand direction, source basis, target markets and content sequence. These revisions do not publish changes to Instagram.
 
 ## Contact
 

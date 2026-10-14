@@ -1,0 +1,27 @@
+{
+  "source": "docs/agency-launch/captions/03-handoff.txt",
+  "checks": {
+    "BURSTINESS": {
+      "score": 58.8,
+      "detail": "variation 0.50 across 8 sentences (want 0.55+)"
+    },
+    "SPECIFICITY": {
+      "score": 54.3,
+      "detail": "3 concrete markers, 3.5 per 100 words (want 4+)"
+    },
+    "SLOP DENSITY": {
+      "score": 100.0,
+      "detail": "0 stock terms, 0.0 per 100 words"
+    },
+    "FINGERPRINT": {
+      "score": 100.0,
+      "detail": "0 invisible, 0 em dash, 0 curly quote, 0 ellipsis, 0 hard space"
+    },
+    "VOICE": {
+      "score": 83.3,
+      "detail": "4.7 contractions, 4.7 personal pronouns per 100 words, 0 structural tell(s)"
+    }
+  },
+  "human_score": 69.3,
+  "verdict": "REVIEW"
+}

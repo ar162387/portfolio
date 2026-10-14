@@ -5,7 +5,7 @@ import { groups } from "@/data/studio";
 import { ServiceAccordion } from "./Experience";
 import { useStudioMotion } from "./motion";
 
-const labels = ["INTELLIGENCE, IN MOTION", "REPEAT. REFINE. REPEAT.", "KNOWLEDGE, CONNECTED", "A SIGNAL WITH INTENT", "ALWAYS IN CONVERSATION"];
+const labels = ["A USEFUL FIRST ANSWER", "CALLS, WITH A NEXT STEP"];
 
 export function AutomationColumn() {
   const [active, setActive] = useState<number | null>(null);

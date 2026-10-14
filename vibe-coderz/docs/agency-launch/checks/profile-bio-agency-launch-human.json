@@ -1,0 +1,27 @@
+{
+  "source": "docs/agency-launch/checks/profile-bio-agency-launch-clean.txt",
+  "checks": {
+    "BURSTINESS": {
+      "score": 50.0,
+      "detail": "too short to judge"
+    },
+    "SPECIFICITY": {
+      "score": 50.0,
+      "detail": "too short to judge"
+    },
+    "SLOP DENSITY": {
+      "score": 100.0,
+      "detail": "0 stock terms, 0.0 per 100 words"
+    },
+    "FINGERPRINT": {
+      "score": 100.0,
+      "detail": "0 invisible, 0 em dash, 0 curly quote, 0 ellipsis, 0 hard space"
+    },
+    "VOICE": {
+      "score": 50.0,
+      "detail": "too short to judge"
+    }
+  },
+  "human_score": 62.0,
+  "verdict": "REVIEW"
+}

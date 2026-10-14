@@ -7,179 +7,42 @@ export const studio = {
 };
 export const groups = [
   {
-    name: "AI & automation",
-    caption: "Give busywork a new owner.",
+    name: "AI receptionists",
+    caption: "You get on with the work. Callers get a next step.",
     code: "01",
     services: [
       {
-        slug: "ai-automation",
-        name: "AI automation",
-        summary: "Connect your tools. Let the repetitive work run itself.",
-        detail:
-          "Turn repetitive business processes into connected workflows, with clear rules, human approvals, and a useful record of every action.",
-        deliverables: [
-          "Workflow and integration audit",
-          "Connected CRM, email, and business tools",
-          "Approval steps, retries, and monitoring",
-        ],
-        fit: "Teams copying information between tools or spending hours on repeatable admin.",
-      },
-      {
-        slug: "ai-agents",
-        name: "AI agents & RAG",
-        summary: "Useful intelligence, grounded in your business.",
-        detail:
-          "Build assistants that retrieve information from your documents and take carefully scoped actions. We define what an agent can access, when it should ask for help, and how to measure answer quality.",
-        deliverables: [
-          "Knowledge ingestion and retrieval",
-          "Tool integrations and access controls",
-          "Evaluation cases and human handoffs",
-        ],
-        fit: "Businesses with scattered knowledge, complex support questions, or research workflows.",
-      },
-      {
         slug: "voice-agents",
-        name: "Voice agents",
-        summary: "A better first conversation. Even after hours.",
+        name: "AI voice receptionists",
+        summary: "Calls handled around your rules, with a team behind the agent.",
         detail:
-          "Create a voice assistant for routine questions, appointment requests, and call routing. Conversation design includes disclosure, consent requirements, and a clear route to a person.",
+          "Your team has a job to finish or a client to look after. We build an AI receptionist around the calls your business actually receives: routine questions, new enquiries and appointment requests. Where supported, it can book directly into your calendar. When a person needs to step in, the call flow includes that handoff. We test the rules together and agree how the agent will be reviewed and maintained after launch.",
         deliverables: [
-          "Call flow and knowledge setup",
-          "Calendar and CRM integration",
-          "Escalation rules and call testing",
+          "Your call flow, approved information and coverage rules",
+          "Tested booking or enquiry capture with supported integrations",
+          "Human handoff, call-review process and agreed ongoing care",
         ],
-        fit: "Service businesses handling repeat enquiries and appointment scheduling.",
-      },
-      {
-        slug: "chatbots",
-        name: "Customer support chatbots",
-        summary: "Answers that help. Handoffs that make sense.",
-        detail:
-          "Give visitors a useful way to find answers, explore your services, and reach the right person. Responses draw from approved content with a clear fallback when information is missing.",
-        deliverables: [
-          "Website chat experience",
-          "Approved knowledge and response testing",
-          "Lead capture and support handoff",
-        ],
-        fit: "Teams answering the same questions across their website and support inbox.",
+        fit: "Home-service businesses and health or beauty businesses handling routine enquiries and appointments. We agree what the agent can answer and when it must hand over to your team.",
       },
     ],
   },
   {
-    name: "Development",
-    caption: "From first idea to daily use.",
+    name: "Custom CRM & software",
+    caption: "Less copying between tabs. More getting things done.",
     code: "02",
     services: [
       {
-        slug: "web-development",
-        name: "Web development",
-        summary: "Fast, thoughtful websites built to be found.",
-        detail:
-          "We build responsive business websites with a clear content structure, accessible interfaces, and technical SEO foundations. Your team gets a site that is straightforward to use and maintain.",
-        deliverables: [
-          "Page architecture and responsive build",
-          "Metadata, sitemap, and structured data",
-          "Performance checks and launch handover",
-        ],
-        fit: "Businesses replacing a basic website with a credible platform for enquiries.",
-      },
-      {
         slug: "custom-software",
-        name: "Custom software & CRMs",
-        summary: "Software that fits how your business works.",
+        name: "Custom CRM, booking & invoicing",
+        summary: "A clearer path from the first enquiry to the invoice.",
         detail:
-          "Bring customers, operations, and reporting into one system designed around your actual process. Start with the highest-value workflow, then expand without losing control of data and permissions.",
+          "Bring your customer records, lead tracking, appointments, and invoices into software built around the way your business works. Start with the workflow causing the most friction. We can connect an existing system or build a focused replacement, with permissions, integrations, and handover agreed before development begins.",
         deliverables: [
-          "Workflow mapping and system architecture",
-          "Role-based dashboards and integrations",
-          "Data migration plan and operating documentation",
+          "Workflow mapping and a focused first release",
+          "Customer records, lead tracking, booking or invoicing tools",
+          "Agreed integrations, access controls, and handover",
         ],
-        fit: "Teams whose work has outgrown spreadsheets or disconnected off-the-shelf tools.",
-      },
-      {
-        slug: "ecommerce",
-        name: "Ecommerce",
-        summary: "From browsing to buying. Without the friction.",
-        detail:
-          "Connect a clear shopping experience to the work behind the order: catalogue management, payments, inventory, and fulfilment. We test the full journey, including failed payments and order updates.",
-        deliverables: [
-          "Storefront and product catalogue",
-          "Payment and order workflows",
-          "Inventory tools and checkout testing",
-        ],
-        fit: "Retailers and food businesses that need their storefront and operations to work together.",
-      },
-      {
-        slug: "web-mobile-apps",
-        name: "Web & mobile apps",
-        summary: "Real products. Ready for the everyday.",
-        detail:
-          "Build useful applications for browsers and mobile devices, from the first working release through integrations and ongoing improvements. We choose the stack around the product, team, and constraints.",
-        deliverables: [
-          "Product scope and key user journeys",
-          "Web or cross-platform mobile application",
-          "API integrations, testing, and release handover",
-        ],
-        fit: "Founders and businesses turning a validated idea into a working product.",
-      },
-    ],
-  },
-  {
-    name: "SEO, growth & insights",
-    caption: "Be found. Understand what works.",
-    code: "03",
-    services: [
-      {
-        slug: "technical-seo",
-        name: "Technical SEO",
-        summary: "Give search engines a site they can understand.",
-        detail:
-          "Identify the technical issues preventing useful pages from being discovered and understood. We prioritise crawlability, indexation, internal links, page structure, and real performance problems.",
-        deliverables: [
-          "Technical audit and prioritised fixes",
-          "Canonical, sitemap, and structured data review",
-          "Search Console setup guidance and validation",
-        ],
-        fit: "Businesses with useful content that is difficult to discover in organic search.",
-      },
-      {
-        slug: "organic-growth",
-        name: "Organic growth & content",
-        summary: "Useful pages for the questions your buyers ask.",
-        detail:
-          "Build a content plan around your expertise and your customers’ questions. We map topics to service pages and practical articles, with a focus on useful information rather than bulk publishing.",
-        deliverables: [
-          "Search intent and topic mapping",
-          "Service page and content briefs",
-          "Internal linking and editorial plan",
-        ],
-        fit: "Studios and service businesses looking to earn relevant search traffic over time.",
-      },
-      {
-        slug: "analytics-insights",
-        name: "Analytics & ranking insights",
-        summary: "Know what brings people in. And what comes next.",
-        detail:
-          "Connect acquisition data with meaningful actions such as qualified enquiries and completed purchases. Establish a baseline, make reporting understandable, and use it to decide what to improve next.",
-        deliverables: [
-          "Measurement plan and event definitions",
-          "Analytics and search performance dashboards",
-          "Conversion review and improvement backlog",
-        ],
-        fit: "Teams that need to connect website activity with business decisions.",
-      },
-      {
-        slug: "answer-engine-optimisation",
-        name: "GEO & answer visibility",
-        summary: "Clear expertise for a changing search landscape.",
-        detail:
-          "Make your expertise easy to find, verify, and understand across traditional search and AI-assisted discovery. Work centres on accurate entities, primary evidence, and well-structured answers; inclusion is never guaranteed.",
-        deliverables: [
-          "Entity and content clarity review",
-          "Source-backed answer content",
-          "Structured data and visibility monitoring plan",
-        ],
-        fit: "Businesses strengthening how their expertise is represented across search experiences.",
+        fit: "Service businesses managing enquiries, bookings, or invoices across spreadsheets and disconnected tools. Available as its own project or alongside an AI receptionist.",
       },
     ],
   },
@@ -202,7 +65,14 @@ export const projects = content.portfolio.map((p) => ({
         ? "Flutter, FFmpegKit, Provider"
         : p.tech,
 }));
-export const articles = [
+export const articles: {
+  slug: string;
+  category: string;
+  title: string;
+  summary: string;
+  sections: string[][];
+  source?: string;
+}[] = [
   {
     slug: "before-you-build-custom-software",
     category: "PRODUCT STRATEGY",
@@ -245,26 +115,24 @@ export const articles = [
     ],
   },
   {
-    slug: "search-ready-website-foundations",
-    category: "SEARCH & GROWTH",
-    title: "Search visibility starts with your site structure.",
+    slug: "before-your-ai-receptionist-books",
+    category: "CALLS & BOOKING",
+    title: "Before your AI receptionist books, define the rules.",
     summary:
-      "Why useful service pages deserve more than a section on your homepage.",
+      "A useful booking flow starts with availability, clear boundaries, and a route to your team.",
     sections: [
       [
-        "Give each service a useful home",
-        "A dedicated service page can explain who it helps, what is included, and how the work happens. Link it to relevant examples so a visitor can move from the offer to evidence without searching through a portfolio.",
+        "Start with the real appointment",
+        "Define the services a caller can book, who provides them, how long they take, and the availability the agent can use. A booking request and a confirmed appointment are different outcomes. Make that distinction clear to the caller.",
       ],
       [
-        "Make the basics explicit",
-        "Use descriptive page titles, readable URLs, and internal links. Publish a sitemap and check that important content is present in the page HTML. These foundations help search engines discover and understand the site.",
+        "Test what happens when a slot is unavailable",
+        "Try a full calendar, an unsupported service, a caller changing their mind, and a disconnected integration. The agent should explain the next step and pass the request to your team when it cannot complete the booking.",
       ],
       [
-        "Measure discovery and enquiries",
-        "After launch, use Search Console to inspect indexation and search queries. Pair those signals with meaningful conversions. A published sitemap does not guarantee indexation or rankings; useful content and continued iteration still matter.",
+        "Confirm the details before calling it booked",
+        "Read back the selected time and the details needed for the appointment. Ask the caller to confirm, then check the calendar response. A successful conversation alone does not prove that an appointment exists.",
       ],
     ],
-    source:
-      "https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
   },
 ];

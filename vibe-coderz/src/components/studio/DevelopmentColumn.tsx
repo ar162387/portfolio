@@ -5,7 +5,7 @@ import { groups } from "@/data/studio";
 import { ServiceAccordion } from "./Experience";
 import { useStudioMotion } from "./motion";
 
-const labels = ["IDEAS, TAKING SHAPE", "BUILT FOR THE BROWSER", "EVERY PART, CONNECTED", "FROM BROWSE TO BAG", "ONE PRODUCT. EVERY SCREEN."];
+const labels = ["THE WORK AFTER THE ENQUIRY", "BOOKINGS AND INVOICES, CONNECTED"];
 
 export function DevelopmentColumn() {
   const [active, setActive] = useState<number | null>(null);

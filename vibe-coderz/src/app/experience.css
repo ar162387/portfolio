@@ -894,6 +894,7 @@
   display: flex;
   gap: 14px;
   width: 75%;
+  min-width: 0;
 }
 .brief-segments button {
   border: 0;
@@ -902,8 +903,9 @@
   font: 9px monospace;
   color: #7d856c;
   flex: 1;
+  min-width: 0;
   text-align: left;
-  white-space: nowrap;
+  white-space: normal;
 }
 .brief-segments button > span {
   height: 3px;
@@ -1738,3 +1740,14 @@
 :root[data-theme="dark"] .method-stops button[aria-current],
 :root[data-theme="dark"] .reading-guide a[aria-current],
 :root[data-theme="dark"] .blueprint-graphic .blueprint-step.selected { color: var(--orange); }
+
+:root[data-theme="dark"] .principle-copy > .eyebrow { color: var(--muted); }
+:root[data-theme="dark"] .brief-segments button[aria-current],
+:root[data-theme="dark"] .selected .option-mark { color: var(--orange); }
+:root[data-theme="dark"] .brief-segments button[aria-current] > span { background: var(--orange); }
+:root[data-theme="dark"] .signal-node.node-a,
+:root[data-theme="dark"] .brief-signal[data-step="1"] .node-b,
+:root[data-theme="dark"] .brief-signal[data-step="2"] .node-b,
+:root[data-theme="dark"] .brief-signal[data-step="2"] .node-c,
+:root[data-theme="dark"] .brief-signal[data-step="3"] .node-b,
+:root[data-theme="dark"] .brief-signal[data-step="3"] .node-c { background: var(--accent-strong); border-color: var(--orange); color: var(--text-on-dark); }

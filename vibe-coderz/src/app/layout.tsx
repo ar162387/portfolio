@@ -2,6 +2,7 @@ import { StudioExperience } from "@/components/studio/Experience";
 import type { Metadata } from "next";
 import "./globals.css";
 import "./experience.css";
+import "./voice-agency.css";
 import { Navigation } from "@/components/studio/Interactive";
 import { Footer } from "@/components/studio/Shared";
 import { studio } from "@/data/studio";
@@ -11,11 +12,11 @@ import { VoiceAssistant } from "@/components/studio/VoiceAssistant";
 export const metadata: Metadata = {
   metadataBase: new URL(studio.url),
   title: {
-    default: "Vibecoderzz | Software, AI & Growth Studio",
+    default: "Vibecoderzz | AI Receptionists. You're Needed Elsewhere.",
     template: "%s | Vibecoderzz",
   },
   description:
-    "Independent software studio in Central London building custom software, AI automation, web and mobile apps, and search-ready digital experiences for businesses worldwide.",
+    "Busy with the work? Give callers a useful next step. AI receptionists built around your business, with agreed ongoing care. USA, UK and Australia.",
   openGraph: {
     type: "website",
     siteName: "Vibecoderzz",
@@ -59,7 +60,9 @@ export default function RootLayout({
               url: studio.url,
               email: studio.email,
               description:
-                "Independent software, AI automation, and digital growth studio.",
+                "AI receptionists and custom CRM, booking and invoicing software for service businesses.",
+              sameAs: ["https://www.instagram.com/vibecoderzai/"],
+              areaServed: ["United States", "United Kingdom", "Australia"],
               address: {
                 "@type": "PostalAddress",
                 addressLocality: "Central London",

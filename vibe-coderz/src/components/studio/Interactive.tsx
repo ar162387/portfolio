@@ -6,9 +6,7 @@ import {
   ArrowUpRight,
   AudioLines,
   Bot,
-  BrainCircuit,
   ChartNoAxesCombined,
-  Code2,
   Database,
   FileText,
   Menu,
@@ -18,7 +16,6 @@ import {
   ShoppingBag,
   Smartphone,
   Sparkles,
-  TrendingUp,
   Workflow,
   X,
   type LucideIcon,
@@ -26,7 +23,6 @@ import {
 import { groups, projects, studio } from "@/data/studio";
 import { usePathname } from "next/navigation";
 import { trackEvent } from "./Analytics";
-import { ThemeControl } from "./ThemeControl";
 import { PhoneContacts } from "./PhoneContacts";
 
 const serviceIcons: Record<string, LucideIcon> = {
@@ -43,8 +39,6 @@ const serviceIcons: Record<string, LucideIcon> = {
   "analytics-insights": ChartNoAxesCombined,
   "answer-engine-optimisation": Sparkles,
 };
-
-const groupIcons = [BrainCircuit, Code2, TrendingUp];
 
 export function Navigation() {
   const [open, setOpen] = useState(false);
@@ -108,7 +102,6 @@ export function Navigation() {
           </span>
           vibecoderzz<span className="brand-dot">✳</span>
         </Link>
-        <ThemeControl />
         <div className="nav-actions">
           <button
             className="mobile-toggle"
@@ -149,7 +142,6 @@ export function Navigation() {
           {[
             ["/work", "Work"],
             ["/about", "Studio"],
-            ["/insights", "Insights"],
           ].map(([url, name]) => (
             <Link
               key={url}
@@ -171,7 +163,7 @@ export function Navigation() {
               closeServicesOnPointer(event.pointerType)
             }
           >
-            Let’s talk <ArrowUpRight size={17} />
+            Request a demo <ArrowUpRight size={17} />
           </Link>
         </nav>
         <PhoneContacts placement="header" />
@@ -179,19 +171,9 @@ export function Navigation() {
       {servicesOpen && (
         <div id="services-menu" className="mega-menu">
           <div className="mega-grid">
-            {groups.map((g, groupIndex) => {
-              const GroupIcon = groupIcons[groupIndex];
+            {groups.map((g) => {
               return (
                 <section className="mega-column" key={g.code}>
-                  <div className="mega-column-heading">
-                    <span className="mega-category-icon">
-                      <GroupIcon size={20} strokeWidth={1.6} />
-                    </span>
-                    <span>
-                      <small>DISCIPLINE {g.code}</small>
-                      <strong>{g.name}</strong>
-                    </span>
-                  </div>
                   <div className="mega-services">
                     {g.services.map((s) => {
                       const ServiceIcon = serviceIcons[s.slug];
@@ -224,7 +206,7 @@ export function Navigation() {
             <span className="mega-bottom-copy">
               <small>THE FULL PICTURE</small>
               <strong>
-                Three disciplines. <em>One connected studio.</em>
+                Calls and bookings. <em>The software that follows.</em>
               </strong>
             </span>
             <span className="mega-bottom-action">
@@ -242,7 +224,7 @@ export function Navigation() {
 export function WorkGrid({ featured = false }: { featured?: boolean }) {
   const [filter, setFilter] = useState("All");
   const list = featured
-    ? projects.filter((p) => ["blackstone-crm", "around-you"].includes(p.id))
+    ? projects.filter((p) => ["blackstone-crm", "bms-system"].includes(p.id))
     : projects.filter((p) => filter === "All" || p.type === filter);
   return (
     <>
@@ -319,14 +301,16 @@ export function WorkGrid({ featured = false }: { featured?: boolean }) {
     </>
   );
 }
-export function ContactForm() {
+export function ContactForm({ initialService = groups[0].name }: { initialService?: string }) {
   const [step, setStep] = useState(0);
   const [values, setValues] = useState({
-    service: groups[0].name,
+    service: initialService,
     budget: "Not sure yet",
     message: "",
     name: "",
     email: "",
+    business: "",
+    country: "",
   });
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -336,7 +320,7 @@ export function ContactForm() {
     setReady(false);
     setCopied(false);
   };
-  const body = `Name: ${values.name}\nEmail: ${values.email}\nService: ${values.service}\nBudget: ${values.budget}\n\n${values.message}`;
+  const body = `Name: ${values.name}\nEmail: ${values.email}\nBusiness: ${values.business}\nCountry: ${values.country}\nService: ${values.service}\nBudget: ${values.budget}\n\n${values.message}`;
   const draft = `mailto:${studio.email}?subject=${encodeURIComponent("Project enquiry — " + values.name)}&body=${encodeURIComponent(body)}`;
   const advance = (next: number) => {
     setStep(next);
@@ -359,7 +343,7 @@ export function ContactForm() {
     >
       <div className="brief-tracker">
         <div className="brief-segments" aria-label={`Step ${step + 1} of 3`}>
-          {["Direction", "The idea", "Say hello"].map((name, i) => (
+          {["What you need", "Your workflow", "Your details"].map((name, i) => (
             <button
               key={name}
               type="button"
@@ -399,17 +383,17 @@ export function ContactForm() {
         <h2 ref={heading} tabIndex={-1}>
           {
             [
-              "What’s your next move?",
-              "Tell us what’s on your mind.",
-              "Let’s put a name to the idea.",
+              "What would you like to explore?",
+              "Where do your calls or admin get stuck?",
+              "Where can we reach you?",
             ][step]
           }
         </h2>
         <p className="brief-stage-intro">
           {
             [
-              "Start with a direction. We can work out the details together.",
-              "A few useful details beat a perfect pitch. What would you like to change?",
+              "Start with your calls, or the software behind your bookings and invoices.",
+              "A little context helps us make the demo useful. Tell us what happens today and what you'd like to change.",
               "Your brief is taking shape. Add your details, then review it in your email app.",
             ][step]
           }
@@ -420,7 +404,7 @@ export function ContactForm() {
               <legend>What do you need?</legend>
               {[
                 ...groups.map((g) => g.name),
-                "Let’s figure it out together",
+                "Help me choose",
               ].map((name, i) => (
                 <label
                   key={name}
@@ -442,7 +426,7 @@ export function ContactForm() {
               ))}
             </fieldset>
             <label>
-              Budget range (USD)
+              Budget in mind? (USD, optional)
               <select
                 name="budget"
                 value={values.budget}
@@ -450,7 +434,8 @@ export function ContactForm() {
               >
                 {[
                   "Not sure yet",
-                  "Under $5,000",
+                  "Under $1,000",
+                  "$1,000–$5,000",
                   "$5,000–$15,000",
                   "$15,000–$30,000",
                   "$30,000+",
@@ -462,8 +447,8 @@ export function ContactForm() {
           </>
         )}
         {step === 1 && (
-          <label>
-            A little about your project
+          <><div className="brief-workflow-fields"><label>Business name or type<input name="business" value={values.business} onChange={(e) => update("business", e.target.value)} required maxLength={150} placeholder="For example, a plumbing business" autoComplete="organization" /></label><label>Country<select name="country" value={values.country} onChange={(e) => update("country", e.target.value)} required><option value="">Select your country</option><option>USA</option><option>UK</option><option>Australia</option><option>Another country</option></select></label></div><label>
+            What should we work through together?
             <textarea
               name="message"
               value={values.message}
@@ -472,12 +457,12 @@ export function ContactForm() {
               minLength={20}
               maxLength={4000}
               rows={6}
-              placeholder="What are you building, changing, or trying to solve?"
+              placeholder="For example: We run a plumbing business in the UK. Calls go to voicemail while we are on jobs. We use a shared calendar and need help capturing enquiries."
             />
             <span className="brief-character-count">
               {values.message.length} / 4000 · at least 20 characters
             </span>
-          </label>
+          </label></>
         )}
         {step === 2 && (
           <>
@@ -486,9 +471,10 @@ export function ContactForm() {
               <p>
                 {values.service} <span> / {values.budget}</span>
               </p>
+              <p>{values.business} · {values.country}</p>
               <p className="brief-excerpt">{values.message}</p>
               <button type="button" onClick={() => advance(1)}>
-                Edit your idea ↗
+                Edit your workflow ↗
               </button>
             </div>
             <div className="form-row">
@@ -537,7 +523,7 @@ export function ContactForm() {
           </span>
         )}
         <button className="button orange-button" type="submit">
-          {step < 2 ? "Continue" : "Prepare project enquiry"}
+          {step < 2 ? "Continue" : "Prepare enquiry"}
           <ArrowUpRight size={18} />
         </button>
       </div>

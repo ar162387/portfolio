@@ -1,0 +1,27 @@
+{
+  "source": "docs/agency-launch/captions/01-founder.txt",
+  "checks": {
+    "BURSTINESS": {
+      "score": 59.3,
+      "detail": "variation 0.50 across 8 sentences (want 0.55+)"
+    },
+    "SPECIFICITY": {
+      "score": 87.9,
+      "detail": "4 concrete markers, 5.3 per 100 words (want 4+)"
+    },
+    "SLOP DENSITY": {
+      "score": 100.0,
+      "detail": "0 stock terms, 0.0 per 100 words"
+    },
+    "FINGERPRINT": {
+      "score": 100.0,
+      "detail": "0 invisible, 0 em dash, 0 curly quote, 0 ellipsis, 0 hard space"
+    },
+    "VOICE": {
+      "score": 100.0,
+      "detail": "10.7 contractions, 8.0 personal pronouns per 100 words, 0 structural tell(s)"
+    }
+  },
+  "human_score": 77.4,
+  "verdict": "PASS"
+}

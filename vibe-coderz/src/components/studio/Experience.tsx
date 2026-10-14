@@ -212,29 +212,29 @@ export function ServiceAccordion({ items, onActiveChange }: { items: ServiceItem
 
 const methodSteps = [
   {
-    name: "Find the real problem",
+    name: "Understand your working day",
     label: "DISCOVER",
-    text: "We ask questions, map your workflows, and agree on what a useful outcome looks like.",
-    output: "A shared brief. A clear definition of useful.",
+    text: "We trace the enquiries, the tools and the points where your team gets interrupted. Then we agree what should happen instead.",
+    output: "Your workflow, coverage and boundaries, written down.",
   },
   {
-    name: "Make it tangible",
+    name: "Put it to the test",
     label: "DEFINE",
-    text: "We turn the scope into a clear direction and a working foundation you can respond to.",
-    output: "A working direction, with the important decisions made visible.",
+    text: "Try a relevant demo. Change your mind mid-call, ask for an unavailable time, or follow a record through the software. We test the awkward parts together.",
+    output: "A working example and agreed acceptance checks.",
   },
   {
-    name: "Build, test, refine",
+    name: "Connect and launch",
     label: "DEVELOP",
-    text: "You see progress through regular demos. We test the details and work through the edge cases.",
+    text: "We connect the agreed tools and test what happens when an action succeeds, fails or needs a person. Then we launch the scope you approved.",
     output:
-      "Working software, tested against the way it will actually be used.",
+      "A checked workflow and a clear route to your team.",
   },
   {
-    name: "Launch with a plan",
-    label: "DELIVER",
-    text: "Documentation, handover, and an agreed next step. Your product has a life beyond launch.",
-    output: "A supported handover and a plan for what comes next.",
+    name: "Stay close to the work",
+    label: "CARE",
+    text: "We agree the review, support and change process before launch. The work after go-live has an owner, too.",
+    output: "Defined ongoing responsibilities and a way to request changes.",
   },
 ];
 export function MethodJourney() {
@@ -287,16 +287,16 @@ export function MethodJourney() {
       <div className="method-sticky">
         <p className="eyebrow">
           <span className="orange-dot" />
-          03 / HOW WE WORK
+          FROM FIRST CONVERSATION TO ONGOING CARE
         </p>
         <h2>
-          Less mystery.
+          Built together.
           <br />
-          More <em>momentum.</em>
+          <em>Looked after.</em>
         </h2>
         <p>
-          You work directly with the people building. A clear route from the
-          first question to the next chapter.
+          You work directly with the people building. You can see the decisions,
+          test the workflow and know what happens after launch.
         </p>
         <div className="method-instrument">
           <svg viewBox="0 0 120 120" aria-hidden="true">

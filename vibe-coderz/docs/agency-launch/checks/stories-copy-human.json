@@ -1,0 +1,27 @@
+{
+  "source": "docs/agency-launch/checks/stories-copy-clean.txt",
+  "checks": {
+    "BURSTINESS": {
+      "score": 37.6,
+      "detail": "variation 0.40 across 32 sentences (want 0.55+)"
+    },
+    "SPECIFICITY": {
+      "score": 100.0,
+      "detail": "29 concrete markers, 10.5 per 100 words (want 4+)"
+    },
+    "SLOP DENSITY": {
+      "score": 100.0,
+      "detail": "0 stock terms, 0.0 per 100 words"
+    },
+    "FINGERPRINT": {
+      "score": 100.0,
+      "detail": "0 invisible, 0 em dash, 0 curly quote, 0 ellipsis, 0 hard space"
+    },
+    "VOICE": {
+      "score": 68.7,
+      "detail": "2.9 contractions, 3.3 personal pronouns per 100 words, 1 structural tell(s) [caps-shout]"
+    }
+  },
+  "human_score": 63.8,
+  "verdict": "REVIEW"
+}

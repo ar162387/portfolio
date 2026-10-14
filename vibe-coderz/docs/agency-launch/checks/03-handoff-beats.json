@@ -1,0 +1,133 @@
+{
+  "wpm": 165,
+  "target": 32.0,
+  "total_seconds": 30.91,
+  "total_words": 85,
+  "beats": [
+    {
+      "n": 1,
+      "start": 0.0,
+      "dur": 2.91,
+      "words": 8,
+      "text": "You don't need 3 inboxes for one enquiry.",
+      "concrete": 1,
+      "label": "HOOK",
+      "flags": []
+    },
+    {
+      "n": 2,
+      "start": 2.91,
+      "dur": 2.55,
+      "words": 7,
+      "text": "Here's a plumbing enquiry using sample information.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 3,
+      "start": 5.45,
+      "dur": 2.18,
+      "words": 6,
+      "text": "Boiler service. Monday morning. Callback number.",
+      "concrete": 2,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 4,
+      "start": 7.64,
+      "dur": 1.45,
+      "words": 4,
+      "text": "Fine. Who follows up?",
+      "concrete": 1,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 5,
+      "start": 9.09,
+      "dur": 3.27,
+      "words": 9,
+      "text": "That needs an answer before the agent goes live.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 6,
+      "start": 12.36,
+      "dur": 2.55,
+      "words": 7,
+      "text": "I'd want the details in one place",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 7,
+      "start": 14.91,
+      "dur": 3.27,
+      "words": 9,
+      "text": "With the booking state and the next person responsible",
+      "concrete": 0,
+      "label": "MID",
+      "flags": []
+    },
+    {
+      "n": 8,
+      "start": 18.18,
+      "dur": 3.64,
+      "words": 10,
+      "text": "So your team can act without replaying the whole call.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 9,
+      "start": 21.82,
+      "dur": 2.55,
+      "words": 7,
+      "text": "Your existing CRM might already do this.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 10,
+      "start": 24.36,
+      "dur": 1.82,
+      "words": 5,
+      "text": "If it does, keep it.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 11,
+      "start": 26.18,
+      "dur": 3.27,
+      "words": 9,
+      "text": "Tell me what you'd want in that enquiry record.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 12,
+      "start": 29.45,
+      "dur": 1.45,
+      "words": 4,
+      "text": "Without checking 3 inboxes.",
+      "concrete": 1,
+      "label": "CTA",
+      "flags": []
+    }
+  ],
+  "notes": [
+    "Beats 5-7 have nothing concrete in them. Put a number, a name or a price in one of them.",
+    "Loops: the last beat repeats \"3, inboxes\" from the hook. Second watches are free reach.",
+    "Length is on target (30.9s against 32.0s)."
+  ]
+}

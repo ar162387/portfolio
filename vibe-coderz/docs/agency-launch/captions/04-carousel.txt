@@ -1,0 +1,11 @@
+The booking's in the calendar. Now find the rest.
+
+I'd trace 3 things before building more booking software: the customer record, the appointment state and the invoice draft.
+
+Try a simple salon example. Alex asks for Tuesday at 2 pm, changes to Wednesday, then cancels. Can reception see what happened without opening a second tab?
+
+I'd check your existing CRM first. Maybe it already does the job.
+
+Save this booking workflow for your next process review.
+
+#BookingSoftware #SalonBusiness #CustomCRM

@@ -28,9 +28,9 @@ const stageOrder = Object.keys(stageLabels);
 function displayInterest(value: string | null) {
   return value ? value.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()) : "Not clear yet";
 }
-function formatDate(value: string | null) {
+function formatDate(value: string | null, timeZone?: string) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone }).format(new Date(value));
 }
 
 export function Dashboard() {
@@ -121,7 +121,7 @@ export function Dashboard() {
           <div><span>Interest</span><strong>{displayInterest(selected.offer_interest)}</strong></div>
           <div><span>Contact</span><strong>{selected.contact_email || "Not collected"}</strong></div>
           <div><span>Volume</span><strong>{selected.inquiry_volume || "Not discussed"}</strong></div>
-          <div><span>Appointment</span><strong>{formatDate(selected.appointment_start)}</strong></div>
+          <div><span>Appointment · Pakistan time (Asia/Karachi)</span><strong>{formatDate(selected.appointment_start, "Asia/Karachi")}</strong></div>
         </div>
         <section className={styles.summary}><p className={styles.kicker}>LEAD SUMMARY</p><p>{selected.need_summary || "No business need was captured."}</p>{selected.qualification_reason && <small>{selected.qualification_reason}</small>}</section>
         <section className={styles.transcript}><p className={styles.kicker}>TRANSCRIPT · {selected.message_count} MESSAGES</p>

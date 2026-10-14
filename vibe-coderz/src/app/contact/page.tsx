@@ -3,21 +3,23 @@ import { ContactForm } from "@/components/studio/Interactive";
 import { studio } from "@/data/studio";
 import { pageMetadata } from "@/lib/seo";
 import { PhoneContacts } from "@/components/studio/PhoneContacts";
+import { groups } from "@/data/studio";
 export const metadata = pageMetadata(
-  "Start a Project",
-  "Tell Vibecoderzz about your software, AI automation, or digital growth project. Based in Central London, working worldwide.",
+  "Request a Demo or Discuss Your Workflow",
+  "Request an AI receptionist demo or discuss custom CRM, booking and invoicing software for your service business.",
   "/contact",
 );
-export default function Contact() {
+export default async function Contact({ searchParams }: { searchParams: Promise<{ service?: string }> }) {
+  const { service } = await searchParams;
   return (
     <>
       <PageIntro
-        label="LET’S MAKE SOMETHING USEFUL"
-        title="Every good build starts with a conversation."
-        description="An early idea, a stubborn problem, or a product ready for its next chapter. Tell us where you are and where you want to go."
+        label="A DEMO AROUND YOUR BUSINESS"
+        title="Bring us the call you wish you could delegate."
+        description="The routine question. The booking request. The enquiry that arrives when everyone's busy. Tell us what happens today, and we'll work through a useful next step."
       />
       <section className="contact-layout shell">
-        <ContactForm />
+        <ContactForm initialService={groups[service === "software" ? 1 : 0].name} />
         <noscript>
           <style>{`.guided-brief { display: none; }`}</style>
           <div className="detail-aside">
@@ -39,13 +41,14 @@ export default function Contact() {
           <p>
             Central London, United Kingdom
             <br />
-            Working with clients worldwide
+            Serving the USA, UK and Australia
           </p>
           <h3 style={{ marginTop: 40 }}>What happens next?</h3>
           <p>
-            We’ll review your brief, ask a few useful questions, and work out
-            whether we’re a good fit. Then we can define a sensible scope and
-            next step.
+            We’ll ask about your current calls and tools, then agree a relevant
+            demo. You can test the questions your callers would actually ask.
+            If you’re here for software, we’ll trace the workflow before
+            proposing what to build. Scope and costs come before a commitment.
           </p>
         </aside>
       </section>

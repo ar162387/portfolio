@@ -1,0 +1,11 @@
+Save this test for your next AI receptionist demo.
+
+Try Tuesday at 2 pm. Available? Check the appointment booking record.
+
+Then fill the calendar and ask again, because a caller still needs a useful next step when their first choice is gone. Maybe another time. Maybe reception has to confirm.
+
+I'd change Tuesday to Wednesday mid-call, too. Which date actually lands?
+
+This is a demo test using sample information. It isn't a client result.
+
+#AIReceptionist #AppointmentBooking #ClinicManagement

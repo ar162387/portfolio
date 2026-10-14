@@ -1,0 +1,164 @@
+{
+  "wpm": 165,
+  "target": 32.0,
+  "total_seconds": 34.55,
+  "total_words": 95,
+  "beats": [
+    {
+      "n": 1,
+      "start": 0.0,
+      "dur": 2.91,
+      "words": 8,
+      "text": "Don't call Tuesday at 2 pm booked yet.",
+      "concrete": 2,
+      "label": "HOOK",
+      "flags": []
+    },
+    {
+      "n": 2,
+      "start": 2.91,
+      "dur": 0.73,
+      "words": 2,
+      "text": "Open it.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 3,
+      "start": 3.64,
+      "dur": 3.27,
+      "words": 9,
+      "text": "When a caller asks for Tuesday at 2 pm",
+      "concrete": 2,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 4,
+      "start": 6.91,
+      "dur": 2.91,
+      "words": 8,
+      "text": "The calendar still has to accept the appointment",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 5,
+      "start": 9.82,
+      "dur": 2.18,
+      "words": 6,
+      "text": "Before anyone tells them it's confirmed.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 6,
+      "start": 12.0,
+      "dur": 1.09,
+      "words": 3,
+      "text": "I'd test that.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 7,
+      "start": 13.09,
+      "dur": 2.55,
+      "words": 7,
+      "text": "Then try it with a full calendar.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 8,
+      "start": 15.64,
+      "dur": 2.18,
+      "words": 6,
+      "text": "Does the agent offer another time",
+      "concrete": 0,
+      "label": "MID",
+      "flags": []
+    },
+    {
+      "n": 9,
+      "start": 17.82,
+      "dur": 2.91,
+      "words": 8,
+      "text": "Or take a request for reception to confirm?",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 10,
+      "start": 20.73,
+      "dur": 2.55,
+      "words": 7,
+      "text": "Say you've changed your mind: Wednesday instead.",
+      "concrete": 1,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 11,
+      "start": 23.27,
+      "dur": 1.82,
+      "words": 5,
+      "text": "Check which day actually landed.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 12,
+      "start": 25.09,
+      "dur": 1.45,
+      "words": 4,
+      "text": "That's a useful demo",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 13,
+      "start": 26.55,
+      "dur": 3.27,
+      "words": 9,
+      "text": "Because the answer and the calendar have to agree.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 14,
+      "start": 29.82,
+      "dur": 2.55,
+      "words": 7,
+      "text": "Save this test before your next demo.",
+      "concrete": 0,
+      "label": "",
+      "flags": []
+    },
+    {
+      "n": 15,
+      "start": 32.36,
+      "dur": 2.18,
+      "words": 6,
+      "text": "Especially for Tuesday at 2 pm.",
+      "concrete": 2,
+      "label": "CTA",
+      "flags": []
+    }
+  ],
+  "notes": [
+    "Beats 4-6 have nothing concrete in them. Put a number, a name or a price in one of them.",
+    "Beats 11-13 have nothing concrete in them. Put a number, a name or a price in one of them.",
+    "Loops: the last beat repeats \"2, pm, tuesday\" from the hook. Second watches are free reach.",
+    "Length is on target (34.5s against 32.0s)."
+  ]
+}

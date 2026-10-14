@@ -1,0 +1,15 @@
+Don't call Tuesday at 2 pm booked yet.
+Open it.
+When a caller asks for Tuesday at 2 pm
+The calendar still has to accept the appointment
+Before anyone tells them it's confirmed.
+I'd test that.
+Then try it with a full calendar.
+Does the agent offer another time
+Or take a request for reception to confirm?
+Say you've changed your mind: Wednesday instead.
+Check which day actually landed.
+That's a useful demo
+Because the answer and the calendar have to agree.
+Save this test before your next demo.
+Especially for Tuesday at 2 pm.
