@@ -1,4 +1,4 @@
-import { DiscoveryCallLink } from "@/components/studio/DiscoveryCallLink";
+import { DiscoveryCallAutoOpen, DiscoveryCallLink } from "@/components/studio/DiscoveryCallLink";
 import { ArrowDown, ArrowUpRight, Moon, PhoneIncoming, Users } from "lucide-react";
 import { CallExample } from "@/components/studio/CallExample";
 import { CareSection, DemoSection, FounderNote } from "@/components/studio/VoiceSections";
@@ -17,6 +17,7 @@ const questions = [
 
 export default function Home() {
   return <>
+    <DiscoveryCallAutoOpen />
     <section className="hero voice-hero shell">
       <div className="hero-topline"><Label>AI VOICE AGENTS FOR SERVICE BUSINESSES</Label><span className="availability"><i /> USA · UK · Australia</span></div>
       <div className="hero-body">

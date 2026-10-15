@@ -14,7 +14,7 @@ export function Button({
   children: React.ReactNode;
   light?: boolean;
 }) {
-  if (href === "/contact") {
+  if (href.split("?")[0] === "/contact") {
     return <DiscoveryCallLink className={`button ${light ? "light-button" : "orange-button"}`}>{children}<ArrowUpRight size={18} /></DiscoveryCallLink>;
   }
   return (
@@ -129,7 +129,7 @@ export function Footer() {
           <Link href="/services">Services</Link>
           <Link href="/work">Work</Link>
           <Link href="/about">Studio</Link>
-          <Link href="/contact">Contact</Link>
+          <DiscoveryCallLink>Contact</DiscoveryCallLink>
           <Link href="/privacy">Privacy</Link>
           <a href="#cookie-settings">Cookie settings</a>
         </nav>

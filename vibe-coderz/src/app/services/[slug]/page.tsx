@@ -6,6 +6,9 @@ import { PageIntro, Label, Button, CTA } from "@/components/studio/Shared";
 import { pageMetadata, jsonLd, absolute } from "@/lib/seo";
 import { CareSection, DemoSection } from "@/components/studio/VoiceSections";
 import { CallExample } from "@/components/studio/CallExample";
+// Only the two current services are valid routes, including direct URL visits.
+export const dynamicParams = false;
+
 export function generateStaticParams() {
   return services.map((s) => ({ slug: s.slug }));
 }
