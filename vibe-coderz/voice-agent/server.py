@@ -43,12 +43,13 @@ logger.add(
     serialize=True,
 )
 
+import agent_config as agent_settings
 from bot import _env_seconds, run_bot  # noqa: E402
 from dashboard_store import (  # noqa: E402
     add_message,
     attach_transport,
     authenticated_user,
-    claim_greeting,
+    greeting_available,
     conversation_exists,
     conversation_messages,
     end_conversation,
@@ -59,6 +60,7 @@ from dashboard_store import (  # noqa: E402
     logout,
     metrics,
     start_conversation,
+    update_message_delivery,
 )
 from pipecat.transports.smallwebrtc.request_handler import (  # noqa: E402
     IceCandidate, SmallWebRTCPatchRequest, SmallWebRTCRequest, SmallWebRTCRequestHandler,
@@ -146,7 +148,7 @@ async def serve_session(connection, body):
             )
         history = await asyncio.to_thread(conversation_messages, conversation_id)
         greet = await asyncio.to_thread(
-            claim_greeting, conversation_id, body.greet
+            greeting_available, conversation_id, body.greet
         )
         # A recovery restores context and waits for fresh speech. The prior
         # last-user heuristic could regenerate an answer that had already played
@@ -154,7 +156,8 @@ async def serve_session(connection, body):
         resume = False
         # Keep the same model and configured voice across a transport recovery so
         # the visitor does not hear a different persona midway through the call.
-        model = os.getenv("GEMINI_LIVE_MODEL", "gemini-3.8-live")
+        configuration = await asyncio.to_thread(agent_settings.for_conversation, conversation_id)
+        model = configuration.model
         def worker_ready(pipeline_worker):
             live_workers[conversation_id] = (
                 connection.pc_id,
@@ -165,7 +168,7 @@ async def serve_session(connection, body):
         worker = asyncio.create_task(run_bot(
             connection, body.studio_knowledge.model_dump(), greet=greet,
             conversation_id=conversation_id, history=history, model=model, resume=resume,
-            worker_ready=worker_ready,
+            worker_ready=worker_ready, agent_config=configuration,
         ))
         watcher = asyncio.create_task(watch_connection(connection))
         children = [worker, watcher]
@@ -174,15 +177,18 @@ async def serve_session(connection, body):
             task.result()
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except Exception as exc:
         # Provider/database exception text can contain private conversation data.
         logger.warning("Voice session failed; check model access and configuration.")
+        logger.bind(diagnostic=True, event="voice_session_failed", error_type=type(exc).__name__).info("voice_session")
     finally:
         for task in children:
             task.cancel()
         try:
-            await asyncio.gather(*children, return_exceptions=True)
-            await connection.disconnect()
+            await asyncio.wait_for(asyncio.gather(*children, return_exceptions=True), 3)
+            await asyncio.wait_for(connection.disconnect(), 3)
+        except TimeoutError:
+            logger.bind(diagnostic=True, event="voice_cleanup_timeout").info("voice_session")
         finally:
             # Recording failures must never leave the capacity slot occupied.
             sessions.pop(connection.pc_id, None)
@@ -212,6 +218,7 @@ async def lifespan(_app):
         from nltk.tokenize import sent_tokenize
         await asyncio.to_thread(sent_tokenize, "Voice startup check.")
     await asyncio.to_thread(initialize)
+    await asyncio.to_thread(agent_settings.initialize_settings)
     turn_refresh = asyncio.create_task(_refresh_server_turn_forever())
     yield
     turn_refresh.cancel()
@@ -237,10 +244,10 @@ async def _start_voice_session(connection, body):
                 previous_pc_id, previous_task, previous_connection = previous
                 previous_task.cancel()
                 try:
-                    await previous_connection.disconnect()
+                    await asyncio.wait_for(previous_connection.disconnect(), 3)
+                    await asyncio.wait_for(asyncio.gather(previous_task, return_exceptions=True), 3)
                 except Exception:
-                    pass
-                await asyncio.gather(previous_task, return_exceptions=True)
+                    logger.bind(diagnostic=True, event="voice_handoff_cleanup_failed").info("voice_session")
                 sessions.pop(previous_pc_id, None)
         task = asyncio.create_task(serve_session(connection, body))
         sessions[connection.pc_id] = task
@@ -440,6 +447,15 @@ async def close_session(body: SessionEnd):
     if not _verify_session_token(body.conversation_id, body.session_token):
         raise HTTPException(401, "Invalid session")
     await asyncio.to_thread(end_conversation, body.conversation_id, body.reason)
+    active = voice_conversations.get(body.conversation_id)
+    if active:
+        _pc_id, task, connection = active
+        task.cancel()
+        try:
+            await asyncio.wait_for(connection.disconnect(), 3)
+            await asyncio.wait_for(asyncio.gather(task, return_exceptions=True), 3)
+        except TimeoutError:
+            logger.bind(diagnostic=True, event="voice_cleanup_timeout").info("voice_session")
     typed_input_ids.pop(body.conversation_id, None)
     typed_input_locks.pop(body.conversation_id, None)
     return {"ok": True}
@@ -447,6 +463,14 @@ async def close_session(body: SessionEnd):
 
 @app.post("/input", dependencies=[Depends(authenticate)])
 async def deliver_typed_input(body: VoiceInput):
+    try:
+        async with asyncio.timeout(_env_seconds("VOICE_INPUT_TIMEOUT_SECONDS", 10, 0.05)):
+            return await _deliver_typed_input(body)
+    except TimeoutError as exc:
+        raise HTTPException(504, "Voice input timed out") from exc
+
+
+async def _deliver_typed_input(body: VoiceInput):
     """Reliably inject text into the active Gemini Live worker and acknowledge it."""
     if not _verify_session_token(body.conversation_id, body.session_token):
         raise HTTPException(401, "Invalid session")
@@ -455,6 +479,13 @@ async def deliver_typed_input(body: VoiceInput):
         raise HTTPException(422, "Message is empty")
 
     async with typed_input_locks.setdefault(body.conversation_id, asyncio.Lock()):
+        message_ids = typed_input_ids.setdefault(body.conversation_id, deque(maxlen=100))
+        if body.message_id in message_ids:
+            return {"ok": True, "accepted": False}
+        saved = await asyncio.to_thread(conversation_messages, body.conversation_id)
+        if any(item.get("message_id") == body.message_id for item in saved):
+            message_ids.append(body.message_id)
+            return {"ok": True, "accepted": False}
         # The browser can reach this endpoint just before run_bot publishes its
         # worker. Bound that race instead of rejecting a valid first typed turn.
         live = live_workers.get(body.conversation_id)
@@ -466,13 +497,10 @@ async def deliver_typed_input(body: VoiceInput):
         if not live:
             raise HTTPException(409, "Live voice session is unavailable")
 
-        message_ids = typed_input_ids.setdefault(body.conversation_id, deque(maxlen=100))
-        if body.message_id in message_ids:
-            return {"ok": True, "accepted": False}
-
         _pc_id, worker, live_service = live
         await worker.rtvi.interrupt_bot()
-        await worker.flush_pipeline()
+        if not await worker.flush_pipeline():
+            raise HTTPException(409, "Live voice session is recovering")
         # Keep Pipecat's local history ordered for tools and reconnection, but
         # do not run inference from this bookkeeping frame. Gemini Live assumes
         # post-initialisation context updates are already known by the provider.
@@ -482,7 +510,8 @@ async def deliver_typed_input(body: VoiceInput):
                 run_llm=False,
             )
         ])
-        await worker.flush_pipeline()
+        if not await worker.flush_pipeline():
+            raise HTTPException(409, "Live voice session is recovering")
         try:
             await live_service.send_text_reliably(text)
         except TimeoutError as exc:
@@ -542,6 +571,9 @@ async def record_voice_transcript(body: VoiceTranscript):
         raise HTTPException(404, "Conversation not found")
     existing = await asyncio.to_thread(conversation_messages, body.conversation_id)
     if existing and existing[-1].get("role") == "assistant" and existing[-1].get("text") == body.text.strip():
+        if body.interrupted and existing[-1].get("message_id"):
+            await asyncio.to_thread(update_message_delivery, body.conversation_id,
+                                    existing[-1]["message_id"], "interrupted", interrupted=True)
         return {"ok": True, "saved": False}
     saved = await asyncio.to_thread(
         add_message,
@@ -647,3 +679,118 @@ async def dashboard_conversation(conversation_id: str, _token: str = Depends(das
     if item is None:
         raise HTTPException(404, "Conversation not found")
     return item
+
+
+class AgentSettingsChange(BaseModel):
+    config: agent_settings.AgentConfig
+    version: int = Field(ge=1)
+    publish: bool = False
+
+
+class AgentPreview(BaseModel):
+    config: agent_settings.AgentConfig
+
+
+def agent_catalog():
+    from bot import registered_tools
+    tools, booking_enabled = registered_tools()
+    return {
+        'voices': agent_settings.VOICES,
+        'accents': agent_settings.ACCENTS,
+        'models': agent_settings.models(),
+        'tools': [tool.to_default_dict() for tool in tools.standard_tools],
+        'booking_enabled': booking_enabled,
+    }
+
+
+@app.get('/dashboard/agent', dependencies=[Depends(authenticate)])
+async def get_agent_settings(_token: str = Depends(dashboard_token)):
+    return {**await asyncio.to_thread(agent_settings.state), **agent_catalog()}
+
+
+@app.post('/dashboard/agent', dependencies=[Depends(authenticate)])
+async def save_agent_settings(body: AgentSettingsChange, token: str = Depends(dashboard_token)):
+    user = authenticated_user(token)
+    try:
+        result = await asyncio.to_thread(agent_settings.change, body.config, body.version,
+                                         body.publish, user['email'])
+    except agent_settings.ConfigConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {**result, **agent_catalog()}
+
+
+@app.post('/dashboard/agent-prompt', dependencies=[Depends(authenticate)])
+async def preview_agent_prompt(body: AgentPreview, _token: str = Depends(dashboard_token)):
+    from bot import system_prompt
+    catalog = agent_catalog()
+    return {'config': body.config.model_dump(), 'prompt': system_prompt({}, booking_enabled=catalog['booking_enabled'], agent_config=body.config),
+            'note': 'Website business facts are appended at runtime; this preview shows configured additions.'}
+
+
+# Bounded provider usage, separate from real calls and the lead database.
+agent_audition_lock = asyncio.Lock()
+
+
+async def generate_agent_audition(config):
+    import io
+    import wave
+    from google import genai
+    from google.genai import types
+    from bot import system_prompt
+    prompt = system_prompt({}, booking_enabled=False, agent_config=config)
+    prompt += '\nPRIVATE VOICE AUDITION: Say the configured opening once, then stop. No tools are available. Do not record leads or claim to perform actions.'
+    chunks = []
+    transcript = []
+    client = genai.Client(api_key=os.environ['GOOGLE_API_KEY'])
+    try:
+        async with asyncio.timeout(25):
+            async with client.aio.live.connect(model=config.model, config=types.LiveConnectConfig(
+                response_modalities=['AUDIO'], system_instruction=prompt, max_output_tokens=4096,
+                output_audio_transcription=types.AudioTranscriptionConfig(),
+                speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=config.voice))),
+            )) as session:
+                await session.send_client_content(turns=types.Content(role='user', parts=[types.Part(text='Begin with your configured opening.')]), turn_complete=True)
+                size = 0
+                async for response in session.receive():
+                    content = response.server_content
+                    if not content:
+                        continue
+                    if content.output_transcription and content.output_transcription.text:
+                        transcript.append(content.output_transcription.text)
+                    if content.model_turn:
+                        for part in content.model_turn.parts:
+                            if part.inline_data and part.inline_data.mime_type.startswith('audio/pcm'):
+                                chunks.append(part.inline_data.data)
+                                size += len(part.inline_data.data)
+                                if size > 1_440_000:
+                                    raise ValueError('Audition exceeded 30 seconds')
+                    if content.turn_complete:
+                        break
+    finally:
+        await client.aio.aclose()
+    if not chunks:
+        raise ValueError('No audio returned')
+    output = io.BytesIO()
+    with wave.open(output, 'wb') as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(24000)
+        wav.writeframes(b''.join(chunks))
+    return {'audio': base64.b64encode(output.getvalue()).decode(), 'mime_type': 'audio/wav',
+            'transcript': ''.join(transcript)}
+
+
+@app.post('/dashboard/agent-audition', dependencies=[Depends(authenticate)])
+async def audition_agent(body: AgentPreview, _token: str = Depends(dashboard_token)):
+    require_key()
+    if agent_audition_lock.locked():
+        raise HTTPException(429, 'An audition is already running. Try again shortly.')
+    async with agent_audition_lock:
+        try:
+            return await generate_agent_audition(body.config)
+        except TimeoutError as exc:
+            raise HTTPException(504, 'The voice audition timed out. Try again.') from exc
+        except Exception as exc:
+            logger.bind(diagnostic=True, event='agent_audition_failed', error_type=type(exc).__name__).warning('Voice audition failed')
+            raise HTTPException(502, 'The provider could not generate this voice audition. Check model access and try again.') from exc

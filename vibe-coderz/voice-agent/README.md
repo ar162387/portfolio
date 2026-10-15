@@ -65,15 +65,16 @@ environment values; production rendering also needs them at build time.
 - The server health endpoint checks configuration, not Google quota/model access.
   Provider failures are handled by the client connection/error states.
 - Open mic, push-to-talk and typing share one Gemini Live session and history. Typed
-  input is sent through Pipecat's reliable RTVI channel and receives the same native
+  input is sent through the authenticated HTTP input endpoint and injected into the live provider and receives the same native
   audio voice response as speech. There is no separate text-only model or automatic
   text fallback. Microphone selection and a separate assistant-audio mute are available.
 - Production voice defaults to `gemini-3.8-live`. If that Live session fails, the
-  coordinator makes one voice-to-voice recovery attempt with the same model, `Aoede`
-  voice, prompt, tools, and completed conversation history. It never changes a voice
+  coordinator makes one voice-to-voice recovery attempt with the same model, published
+  voice, prompt, tools, and saved conversation history, including labelled interrupted replies. It never changes a voice
   call into text or swaps the visitor to a different speaking persona.
-- The scripted opening is claimed atomically in the database. Reconnects, duplicate
-  ready events, voice-to-text recovery, and an already-started typed conversation cannot
+- The scripted opening is claimed atomically at client readiness. Failed pre-ready
+  handshakes preserve eligibility. Reconnects, duplicate ready events, concurrent
+  attempts, and an already-started typed conversation cannot
   replay it. Interrupted assistant turns remain distinct from completed turns.
 - Model text appears as it streams. Playback-aligned Pipecat `bot-tts-text` events
   advance the spoken highlight. Gemini Live supplies transcript chunks, not precise
@@ -85,12 +86,17 @@ environment values; production rendering also needs them at build time.
   authoritative user transcript, so the final text can arrive after the voice turn.
 - A Gemini `1007` audio-configuration rejection permanently ends that provider session.
   The coordinator restores one replacement Live session instead of reconnecting the
-  rejected configuration. If both voice models fail, it reports a voice outage and ends
+  rejected configuration. If the replacement voice session also fails, it reports a voice outage and ends
   cleanly; it never substitutes typed output or a different TTS personality.
 - Closing the dialog, ending, connection failure and unmounting stop local audio.
   Push-to-talk also mutes on pointer release, keyboard release, blur and visibility change.
 - The sales conversation is deliberately limited to voice agents and custom CRM or
   management software. Unrelated requests are redirected to those two offers.
+- Consultation availability comes from the Cal.com event schedule: 24 hours every
+  day, including weekends, with 30-minute appointments. Visitor-local dates are
+  converted to UTC; invitations retain the attendee timezone and the host profile
+  uses Asia/Karachi. The assistant rechecks offered slots immediately before booking.
+  See `../docs/calendar-booking-fix.md` for configuration and verification details.
 - With `CAL_API_KEY` plus an event type ID or username/event slug configured, the
   assistant can offer real Cal.com slots and create bookings. It only announces a
   confirmation after Cal.com returns a booking UID. Without those settings, it reports
@@ -98,9 +104,7 @@ environment values; production rendering also needs them at build time.
 - After a successful booking, the website waits for the spoken confirmation to finish
   and then ends the call immediately. The separate inactivity farewell is played once
   only when the visitor has been silent for 60 seconds.
-- Calendar results are filtered to visitor-local hours configured with
-  `VISITOR_BOOKING_START_HOUR` and `VISITOR_BOOKING_END_HOUR` (9:00–20:00 by default).
-  `GEMINI_VOICE` selects the native-audio voice and defaults to `Aoede`.
+- `GEMINI_VOICE` initializes the native-audio voice (default `Sulafat`); after initialization, published playground settings control new calls.
 - The spoken introduction presents the agent as the studio's sales consultant. If
   directly asked whether it is AI or human, it must identify itself truthfully as an
   AI-powered virtual sales consultant.
@@ -111,6 +115,7 @@ environment values; production rendering also needs them at build time.
 # Website root
 npm run lint
 npm run build
+node --test tests/*.test.mjs
 
 # voice-agent
 uv pip install pytest httpx
@@ -188,3 +193,14 @@ range. Both coturn and the voice service are restarted after installer updates.
 References: [Pipecat Gemini Live](https://docs.pipecat.ai/pipecat/features/gemini-live),
 [SmallWebRTC](https://docs.pipecat.ai/api-reference/client/js/transports/small-webrtc),
 [Google rate limits](https://ai.google.dev/gemini-api/docs/rate-limits).
+
+## Agent playground
+
+The authenticated dashboard now links to `/studio-admin/playground` for voice,
+accent direction, opener variables, pronunciation, conversation flow, approved
+facts, audio auditions, registered tools and publication history. Drafts are
+separate from published settings; conversations retain their configuration on
+reconnect. Templates can be imported/exported without credentials.
+
+See [the playground blueprint](../docs/agent-playground.md) for setup, voice
+research, validation, deployment, rollback and client adaptation boundaries.

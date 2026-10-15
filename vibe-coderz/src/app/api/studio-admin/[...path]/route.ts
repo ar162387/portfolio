@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const COOKIE = "vibecoderzz_studio_session";
-const allowed = new Set(["login", "logout", "me", "metrics", "conversations"]);
+const allowed = new Set(["login", "logout", "me", "metrics", "conversations", "agent", "agent-prompt", "agent-audition"]);
 
 function sameOrigin(request: NextRequest) {
   const origin = request.headers.get("origin");
@@ -33,7 +33,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
       return NextResponse.json({ error: "Expected JSON." }, { status: 415 });
     }
     body = await request.text();
-    if (body.length > 4_000) return NextResponse.json({ error: "Request too large." }, { status: 413 });
+    if (body.length > (path[0].startsWith("agent") ? 24_000 : 4_000)) return NextResponse.json({ error: "Request too large." }, { status: 413 });
   }
   const upstreamUrl = new URL(`dashboard/${path.join("/")}`, `${backend.replace(/\/$/, "")}/`);
   if (request.method === "GET") upstreamUrl.search = request.nextUrl.search;
@@ -47,7 +47,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
       },
       body,
       cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(path[0] === "agent-audition" ? 35_000 : 10_000),
     });
     const payload = await upstream.json().catch(() => ({ error: "Dashboard request failed." }));
     const response = NextResponse.json(payload, { status: upstream.status });

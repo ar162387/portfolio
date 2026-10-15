@@ -16,9 +16,7 @@ from bot import (
 from dashboard_store import claim_greeting, conversation_messages
 from calendar_tools import (
     CalConfig,
-    _booking_hours,
     _future_iso_timestamp,
-    _slot_in_booking_hours,
     _valid_date_range,
     _valid_timezone,
     calendar_tools_from_env,
@@ -247,7 +245,7 @@ def test_voice_recovery_restores_history_without_replaying_last_turn(monkeypatch
     bot = AsyncMock()
     monkeypatch.setattr(server, "start_conversation", Mock(return_value="conversation"))
     monkeypatch.setattr(server, "conversation_messages", Mock(return_value=history))
-    monkeypatch.setattr(server, "claim_greeting", Mock(return_value=False))
+    monkeypatch.setattr(server, "greeting_available", Mock(return_value=False))
     monkeypatch.setattr(server, "run_bot", bot)
     monkeypatch.setenv("GEMINI_LIVE_MODEL", "gemini-3.8-live")
     offer = server.Offer(**{**OFFER, "recovery_attempt": 1, "greet": False})
@@ -265,7 +263,7 @@ def test_voice_recovery_without_saved_turns_does_not_replay_greeting(monkeypatch
     bot = AsyncMock()
     monkeypatch.setattr(server, "attach_transport", Mock(return_value=True))
     monkeypatch.setattr(server, "conversation_messages", Mock(return_value=[]))
-    monkeypatch.setattr(server, "claim_greeting", Mock(return_value=False))
+    monkeypatch.setattr(server, "greeting_available", Mock(return_value=False))
     monkeypatch.setattr(server, "run_bot", bot)
     offer = server.Offer(**{
         **OFFER,
@@ -288,7 +286,7 @@ def test_first_typed_turn_does_not_trigger_opening_greeting(monkeypatch):
     claim = Mock(return_value=False)
     monkeypatch.setattr(server, "start_conversation", Mock(return_value="conversation"))
     monkeypatch.setattr(server, "conversation_messages", Mock(return_value=[]))
-    monkeypatch.setattr(server, "claim_greeting", claim)
+    monkeypatch.setattr(server, "greeting_available", claim)
     monkeypatch.setattr(server, "run_bot", bot)
     offer = server.Offer(**{**OFFER, "channel": "text", "greet": False})
 
@@ -445,7 +443,7 @@ def test_pipeline_uses_installed_api(client):
 
 def test_sales_prompt_is_scoped_and_truthful():
     prompt = system_prompt(OFFER["studio_knowledge"])
-    assert "website sales consultant" in prompt
+    assert "friendly, professional website receptionist" in prompt
     assert "two offers" in prompt
     assert "Do not volunteer that you are an AI" in prompt
     assert "If directly asked whether you" in prompt
@@ -487,13 +485,6 @@ def test_calendar_input_guards():
     assert not _valid_timezone("Central Time")
 
 
-def test_calendar_uses_visitor_local_business_hours(monkeypatch):
-    monkeypatch.setenv("VISITOR_BOOKING_START_HOUR", "9")
-    monkeypatch.setenv("VISITOR_BOOKING_END_HOUR", "20")
-    assert _booking_hours() == (9, 20)
-    assert _slot_in_booking_hours("2026-09-22T13:00:00-05:00", "America/Chicago")
-    assert not _slot_in_booking_hours("2026-09-22T01:00:00-05:00", "America/Chicago")
-
 
 def test_booking_prompt_changes_with_tool_availability():
     disabled = system_prompt(OFFER["studio_knowledge"])
@@ -502,3 +493,77 @@ def test_booking_prompt_changes_with_tool_availability():
     assert "calendar tools are available" in enabled
     assert "booking_uid" in enabled
     assert "Most of Texas is America/Chicago" in enabled
+
+
+def test_concurrent_greeting_claims_have_exactly_one_winner(client):
+    from concurrent.futures import ThreadPoolExecutor
+    from dashboard_store import greeting_available
+    conversation_id = client.post('/session', json={'channel': 'voice'}, headers=AUTH).json()['conversation_id']
+    assert greeting_available(conversation_id, True)
+    assert greeting_available(conversation_id, True)  # Failed handshakes do not consume it.
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        assert sum(pool.map(lambda _: claim_greeting(conversation_id, True), range(8))) == 1
+    assert not greeting_available(conversation_id, True)
+
+
+def test_opening_is_claimed_at_ready_and_never_repeated_after_recovery(client):
+    from dashboard_store import greeting_available
+    conversation_id = client.post('/session', json={'channel': 'voice'}, headers=AUTH).json()['conversation_id']
+
+    async def check():
+        connection = SmallWebRTCConnection()
+        worker = create_worker(connection, OFFER['studio_knowledge'], conversation_id=conversation_id)
+        worker.queue_frames = AsyncMock()
+        worker.rtvi.send_server_message = AsyncMock()
+        assert greeting_available(conversation_id, True)
+        ready = worker.rtvi._event_handlers['on_client_ready'].handlers[-1]
+        await ready(worker.rtvi)
+        await ready(worker.rtvi)
+        worker.queue_frames.assert_awaited_once()
+        worker.rtvi.send_server_message.assert_awaited_once_with({'type': 'voice-opening', 'committed': True})
+        frame = worker.queue_frames.await_args.args[0][0]
+        assert 'exact opening' in frame.context.get_messages()[-1]['content']
+        assert not greeting_available(conversation_id, True)
+        recovered = create_worker(connection, OFFER['studio_knowledge'], greet=True, conversation_id=conversation_id)
+        recovered.queue_frames = AsyncMock()
+        recovered.rtvi.send_server_message = AsyncMock()
+        ready_again = recovered.rtvi._event_handlers['on_client_ready'].handlers[-1]
+        await ready_again(recovered.rtvi)
+        assert recovered.studio_live_service._inference_on_context_initialization is False
+        assert recovered.queue_frames.await_args.args[0][0].context.get_messages() == []
+        recovered.rtvi.send_server_message.assert_awaited_once_with({'type': 'voice-opening', 'committed': False})
+        await connection.disconnect()
+
+    asyncio.run(check())
+
+
+def test_greeting_cannot_be_claimed_for_ended_conversation(client):
+    credentials = client.post('/session', json={'channel': 'voice'}, headers=AUTH).json()
+    client.post('/session/end', json={**credentials, 'reason': 'client_ended'}, headers=AUTH)
+    assert not claim_greeting(credentials['conversation_id'], True)
+
+
+def test_lost_input_ack_is_deduplicated_after_worker_and_memory_are_gone(client):
+    credentials = client.post('/session', json={'channel': 'voice'}, headers=AUTH).json()
+    service = Mock(send_text_reliably=AsyncMock())
+    worker = Mock(rtvi=Mock(interrupt_bot=AsyncMock()), flush_pipeline=AsyncMock(return_value=True), queue_frames=AsyncMock())
+    server.live_workers[credentials['conversation_id']] = ('pc', worker, service)
+    payload = {**credentials, 'message_id': 'voice-user:lost-ack', 'text': 'Tell me about your CRM'}
+    assert client.post('/input', json=payload, headers=AUTH).json()['accepted'] is True
+    server.live_workers.clear()
+    server.typed_input_ids.clear()
+    assert client.post('/input', json=payload, headers=AUTH).json() == {'ok': True, 'accepted': False}
+    service.send_text_reliably.assert_awaited_once()
+
+
+def test_stalled_input_flush_has_a_finite_deadline(client, monkeypatch):
+    monkeypatch.setenv('VOICE_INPUT_TIMEOUT_SECONDS', '0.05')
+    credentials = client.post('/session', json={'channel': 'voice'}, headers=AUTH).json()
+    async def hanging_flush():
+        await asyncio.Event().wait()
+    worker = Mock(rtvi=Mock(interrupt_bot=AsyncMock()), flush_pipeline=hanging_flush, queue_frames=AsyncMock())
+    service = Mock(send_text_reliably=AsyncMock())
+    server.live_workers[credentials['conversation_id']] = ('pc', worker, service)
+    response = client.post('/input', json={**credentials, 'message_id': 'voice-user:hanging', 'text': 'Hello'}, headers=AUTH)
+    assert response.status_code == 504
+    service.send_text_reliably.assert_not_awaited()

@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import (
-    Boolean, DateTime, ForeignKey, Index, Integer, String, Text, create_engine, func, inspect, or_, select, text,
+    Boolean, DateTime, ForeignKey, Index, Integer, String, Text, create_engine, func, inspect, or_, select, text, update,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
@@ -302,21 +302,28 @@ def attach_transport(conversation_id: str, transport_id: str, channel: str) -> b
         return True
 
 
+def greeting_available(conversation_id: str, requested: bool) -> bool:
+    """Inspect eligibility without consuming it during a failed handshake."""
+    if not requested:
+        return False
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+        return bool(conversation and conversation.ended_at is None
+                    and not conversation.greeting_delivered and conversation.message_count == 0)
+
+
 def claim_greeting(conversation_id: str, requested: bool) -> bool:
-    """Atomically allow the opening once for the lifetime of a conversation."""
+    """Commit the opening once at client readiness; never roll back on retries."""
     if not requested:
         return False
     with SessionLocal.begin() as db:
-        conversation = db.get(Conversation, conversation_id)
-        if (
-            conversation is None
-            or conversation.greeting_delivered
-            or conversation.message_count > 0
-        ):
-            return False
-        conversation.greeting_delivered = True
-        conversation.last_activity_at = _now()
-        return True
+        result = db.execute(update(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.ended_at.is_(None),
+            Conversation.greeting_delivered.is_(False),
+            Conversation.message_count == 0,
+        ).values(greeting_delivered=True, last_activity_at=_now()))
+        return result.rowcount == 1
 
 
 def _advance(conversation: Conversation, stage: str) -> None:

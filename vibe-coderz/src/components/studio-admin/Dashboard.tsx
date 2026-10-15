@@ -78,6 +78,7 @@ export function Dashboard() {
   return <main className={styles.dashboardShell}>
     <header className={styles.dashboardHeader}>
       <div><p className={styles.kicker}>VIBECODERZZ / LEAD INTELLIGENCE</p><h1>Conversation <em>pipeline.</em></h1></div>
+      <a className={styles.signOut} href="/studio-admin/playground">Agent playground</a>
       <button className={styles.signOut} onClick={signOut}><LogOut size={16} /> Sign out</button>
     </header>
 
