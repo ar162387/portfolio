@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DiscoveryCallLink } from "./DiscoveryCallLink";
 import { MethodJourney, MotionControl } from "./Experience";
 import { ArrowUpRight, AudioLines, Database } from "lucide-react";
 import { studio } from "@/data/studio";
@@ -13,6 +14,9 @@ export function Button({
   children: React.ReactNode;
   light?: boolean;
 }) {
+  if (href === "/contact") {
+    return <DiscoveryCallLink className={`button ${light ? "light-button" : "orange-button"}`}>{children}<ArrowUpRight size={18} /></DiscoveryCallLink>;
+  }
   return (
     <Link
       className={`button ${light ? "light-button" : "orange-button"}`}

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { DiscoveryCallLink } from "@/components/studio/DiscoveryCallLink";
 import { ArrowDown, ArrowUpRight, Moon, PhoneIncoming, Users } from "lucide-react";
 import { CallExample } from "@/components/studio/CallExample";
 import { CareSection, DemoSection, FounderNote } from "@/components/studio/VoiceSections";
@@ -23,7 +23,7 @@ export default function Home() {
         <div className="hero-copy">
           <h1>You’re needed<br /><em>elsewhere.</em></h1>
           <p>On a job. With a client. Finally off the clock.<br />We build and look after AI receptionists that answer routine questions, capture enquiries and help callers book.</p>
-          <div className="hero-actions"><Button href="#call-example">See a call unfold</Button><Link href="/contact" className="text-link">Let’s talk about your calls <ArrowUpRight size={17} /></Link></div>
+          <div className="hero-actions"><Button href="#call-example">See a call unfold</Button><DiscoveryCallLink className="text-link">Let’s talk about your calls <ArrowUpRight size={17} /></DiscoveryCallLink></div>
           <div className="hero-footnote"><span className="tiny-cross" aria-hidden="true">✳</span><span>Your call flow. Your booking rules.<br />A team behind the agent.</span></div>
         </div>
         <CallExample />

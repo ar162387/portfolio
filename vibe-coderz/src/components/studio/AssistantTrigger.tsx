@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpRight, AudioLines } from "lucide-react";
-import Link from "next/link";
+import { DiscoveryCallLink } from "./DiscoveryCallLink";
 import { useState } from "react";
 import { trackEvent } from "./Analytics";
 
@@ -19,5 +19,5 @@ export function AssistantTrigger() {
       window.dispatchEvent(new Event(openAssistantEvent));
     } catch { setState("offline"); }
   }
-  return <div className="assistant-invite-action">{state === "offline" ? <><p role="status">The studio assistant is unavailable right now. We can still walk through a demo with you.</p><Link className="button orange-button" href="/contact">Request a walkthrough <ArrowUpRight size={18} /></Link><button className="text-link assistant-retry" type="button" onClick={open}>Try the assistant again</button></> : <button type="button" className="button orange-button" aria-haspopup="dialog" disabled={state === "checking"} aria-busy={state === "checking"} onClick={open}><AudioLines size={18} /> {state === "checking" ? "Checking the connection…" : "Try our studio assistant"} <ArrowUpRight size={18} /></button>}</div>;
+  return <div className="assistant-invite-action">{state === "offline" ? <><p role="status">The studio assistant is unavailable right now. We can still walk through a demo with you.</p><DiscoveryCallLink className="button orange-button">Request a walkthrough <ArrowUpRight size={18} /></DiscoveryCallLink><button className="text-link assistant-retry" type="button" onClick={open}>Try the assistant again</button></> : <button type="button" className="button orange-button" aria-haspopup="dialog" disabled={state === "checking"} aria-busy={state === "checking"} onClick={open}><AudioLines size={18} /> {state === "checking" ? "Checking the connection…" : "Try our studio assistant"} <ArrowUpRight size={18} /></button>}</div>;
 }

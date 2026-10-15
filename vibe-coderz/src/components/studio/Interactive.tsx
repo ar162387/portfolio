@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { DiscoveryCallLink } from "./DiscoveryCallLink";
 import Image from "next/image";
 import {
   ArrowUpRight,
@@ -155,16 +156,15 @@ export function Navigation() {
               {name}
             </Link>
           ))}
-          <Link
+          <DiscoveryCallLink
             className="nav-cta"
-            href="/contact"
             onClick={close}
             onPointerEnter={(event) =>
               closeServicesOnPointer(event.pointerType)
             }
           >
             Request a demo <ArrowUpRight size={17} />
-          </Link>
+          </DiscoveryCallLink>
         </nav>
         <PhoneContacts placement="header" />
       </div>
