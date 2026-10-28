@@ -8,7 +8,7 @@ import { Footer } from "@/components/studio/Shared";
 import { studio } from "@/data/studio";
 import { jsonLd } from "@/lib/seo";
 import { Analytics } from "@/components/studio/Analytics";
-import { VoiceAssistant } from "@/components/studio/VoiceAssistant";
+import { VoiceAssistantMount } from "@/components/studio/VoiceAssistantMount";
 export const metadata: Metadata = {
   metadataBase: new URL(studio.url),
   title: {
@@ -50,7 +50,7 @@ export default function RootLayout({
         <StudioExperience />
         <main id="main">{children}</main>
         <Footer />
-        {process.env.VOICE_AGENT_URL && <VoiceAssistant />}
+        {process.env.VOICE_AGENT_URL && <VoiceAssistantMount />}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

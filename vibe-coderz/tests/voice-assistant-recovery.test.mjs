@@ -7,7 +7,7 @@ import ts from 'typescript';
 const compile = (path) => ts.transpileModule(readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
 const component = compile('src/components/studio/VoiceAssistant.tsx');
 const watchdog = compile('src/lib/voice-session-watchdog.ts');
-function harness({ failFirst = false, delayedSession = false, refused = false, withAudio = false } = {}) {
+function harness({ failFirst = false, delayedSession = false, refused = false, withAudio = false, niche } = {}) {
   const hooks = [], clients = [], requests = [], timers = new Set(), timeouts = new Map();
   let cursor = 0, sessionResolve;
   const window = new EventTarget(); Object.assign(window, { isSecureContext: true, location: { search: '' } });
@@ -44,7 +44,7 @@ function harness({ failFirst = false, delayedSession = false, refused = false, w
   const fetch = async (url, options) => {
     const body = JSON.parse(options.body); requests.push({ url, body });
     if (url === '/api/voice/session' && delayedSession) return new Promise((resolve) => { sessionResolve = resolve; });
-    return { ok: true, json: async () => url === '/api/voice/session' ? { conversationId: 'conversation', sessionToken: 'token', iceServers: [] } : { ok: true } };
+    return { ok: true, json: async () => url === '/api/voice/session' ? { conversationId: 'conversation', sessionToken: 'token', iceServers: [] } : url === '/api/voice/demo-email' ? { subject: '[SAMPLE / DEMO] Appointment request', text: 'No appointment has been booked.', delivery: 'not_sent' } : { ok: true } };
   };
   vm.runInNewContext(component, { ...environment, exports, fetch, require: (name) => {
     if (name === 'react') return react;
@@ -59,7 +59,7 @@ function harness({ failFirst = false, delayedSession = false, refused = false, w
   } });
   const render = () => {
     cursor = 0;
-    const tree = exports.VoiceAssistant({ email: 'test@example.com' });
+    const tree = exports.VoiceAssistant({ niche });
     if (withAudio && !hooks[1].current) hooks[1].current = { play: async () => {}, pause() {}, load() {}, removeAttribute() {} };
     return tree;
   };
@@ -188,5 +188,32 @@ test('message input is hidden until connected and disappears when the call ends'
     assert.equal(h.elements().some(n => n.type === 'form'), true);
     h.button('End').props.onClick(); await settle();
     assert.equal(h.elements().some(n => n.type === 'form'), false);
+  } finally { h.dispose(); }
+});
+
+// The niche uses the existing transport/recovery flow with the same allowlisted key.
+test('niche remains attached to session creation and every recovered voice offer', async () => {
+  const h = harness({ failFirst: true, niche: 'garage-doors' });
+  try {
+    await h.button('Start talking').props.onClick();
+    await settle();
+    assert.equal(h.requests.find((request) => request.url === '/api/voice/session').body.niche, 'garage-doors');
+    assert.equal(h.clients.length, 2);
+    for (const client of h.clients) assert.equal(client.offer.niche, 'garage-doors');
+  } finally { h.dispose(); }
+});
+
+test('confirmed demo notification opens the labelled email preview without sending', async () => {
+  const h = harness({ niche: 'garage-doors' });
+  try {
+    h.button('Start talking').props.onClick(); await settle();
+    h.clients[0].callbacks.onServerMessage({ type: 'demo-complete' }); await settle();
+    const request = h.requests.find((request) => request.url === '/api/voice/demo-email');
+    assert.equal(request.body.conversationId, 'conversation');
+    assert.equal(request.body.consent, undefined);
+    assert.match(h.text(), /What an owner would receive/);
+    assert.match(h.text(), /SAMPLE \/ DEMO/);
+    h.button('End').props.onClick(); await settle();
+    assert.match(h.text(), /What an owner would receive/);
   } finally { h.dispose(); }
 });

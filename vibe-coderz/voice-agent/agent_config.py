@@ -137,14 +137,14 @@ def change(config: AgentConfig, version: int, publish: bool, author: str):
     return state()
 
 
-def for_conversation(conversation_id: str) -> AgentConfig:
+def for_conversation(conversation_id: str, *, initial_config: AgentConfig | None = None) -> AgentConfig:
     """Pin on first connection, keeping voice/script stable across recovery/restart."""
     with store.SessionLocal() as db:
         snapshot = db.get(ConversationConfig, conversation_id)
         if snapshot:
             return AgentConfig.model_validate_json(snapshot.config)
         row = db.get(AgentSettings, 1)
-        payload = row.published
+        payload = initial_config.model_dump_json() if initial_config else row.published
         db.add(ConversationConfig(conversation_id=conversation_id, config=payload))
         try:
             db.commit()

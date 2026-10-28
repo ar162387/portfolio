@@ -5,6 +5,7 @@ import { ArrowUpRight, Mic, MicOff, PhoneOff, Send, Volume2, VolumeX, X } from "
 import type { PipecatClient } from "@pipecat-ai/client-js";
 import styles from "./voice-assistant.module.css";
 import { boundedCleanup, VoiceSessionWatchdog, waitUntilOnline } from "@/lib/voice-session-watchdog";
+import type { NicheKey } from "@/lib/niche-demos";
 
 type Status = "idle" | "connecting" | "listening" | "processing" | "responding" | "recovering" | "speaking" | "ended" | "error";
 type Mode = "talk" | "hold";
@@ -63,7 +64,7 @@ async function collectConnectionStats(transport: StatsTransport) {
   };
 }
 
-export function VoiceAssistant() {
+export function VoiceAssistant({ niche, inline = false }: { niche?: NicheKey; inline?: boolean } = {}) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const open = () => { if (!dialog.current?.open) dialog.current?.showModal(); };
@@ -123,6 +124,50 @@ export function VoiceAssistant() {
   const [needsPlayback, setNeedsPlayback] = useState(false);
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   const [selectedMic, setSelectedMic] = useState("");
+  const [sampleEmail, setSampleEmail] = useState<{ subject: string; text: string; delivery: string; sending_available?: boolean } | null>(null);
+  const [email, setEmail] = useState("");
+  const [emailConsent, setEmailConsent] = useState(false);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailMessage, setEmailMessage] = useState("");
+  // Keep the completed demo credentials for its one email after End releases audio.
+  const completedDemo = useRef<{ conversationId: string; sessionToken: string } | null>(null);
+  const [demoIdentity, setDemoIdentity] = useState<{ conversationId: string; sessionToken: string } | null>(null);
+  const [visitor, setVisitor] = useState({ name: "", business: "", email: "", phone: "", owner_details_confirmed: false });
+  const [visitorBusy, setVisitorBusy] = useState(false), [visitorMessage, setVisitorMessage] = useState("");
+
+  async function saveVisitor(event: React.FormEvent) {
+    event.preventDefault();
+    if (!demoIdentity || visitorBusy) return;
+    setVisitorBusy(true); setVisitorMessage("");
+    try {
+      const response = await fetch("/api/voice/demo-visitor", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...demoIdentity, details: visitor }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Your details could not be saved.");
+      setVisitorMessage("Your details are saved with this demo. The studio can follow up with you.");
+    } catch (cause) { setVisitorMessage(cause instanceof Error ? cause.message : "Your details could not be saved."); }
+    finally { setVisitorBusy(false); }
+  }
+
+  async function loadSampleEmail(send = false) {
+    if (emailBusy) return;
+    const credentials = completedDemo.current || { conversationId: conversationId.current, sessionToken: sessionToken.current };
+    if (!credentials.conversationId) return;
+    setEmailBusy(true); setEmailMessage("");
+    try {
+      const response = await fetch("/api/voice/demo-email", {
+        method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store",
+        body: JSON.stringify({ ...credentials, ...(send ? { consent: { email, own_address_confirmed: emailConsent } } : {}) }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Sample email unavailable.");
+      completedDemo.current = credentials;
+      setSampleEmail(payload);
+      if (send) setEmailMessage("Resend accepted your sample email. Delivery may take a moment.");
+    } catch (cause) {
+      setEmailMessage(cause instanceof Error ? cause.message : "Sample email unavailable.");
+    } finally { setEmailBusy(false); }
+  }
   const active = ["listening", "speaking", "processing", "responding", "recovering"].includes(status);
 
   function clearVoiceTimers() {
@@ -316,9 +361,9 @@ export function VoiceAssistant() {
     let response: Response;
     try { response = await fetch("/api/voice/session", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ channel }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]), cache: "no-store",
+      body: JSON.stringify({ channel, niche }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]), cache: "no-store",
     }); } finally { pendingRequests.current.delete(controller); }
-    if (!response.ok) throw new Error("Session unavailable");
+    if (!response.ok) throw new Error(niche ? "This sample demo is currently switched off or unavailable. Please contact the studio." : "Session unavailable");
     const payload = await response.json() as {
       conversationId: string; sessionToken: string; iceServers?: RTCIceServer[];
     };
@@ -331,6 +376,7 @@ export function VoiceAssistant() {
     }
     conversationId.current = payload.conversationId;
     sessionToken.current = payload.sessionToken;
+    if (niche) setDemoIdentity({ conversationId: payload.conversationId, sessionToken: payload.sessionToken });
     sessionIceServers.current = payload.iceServers || [];
     sessionWarningTimer.current = setTimeout(() => {
       setError("This call will reach its 14-minute limit in 30 seconds. You can start a new conversation afterward.");
@@ -469,7 +515,11 @@ export function VoiceAssistant() {
     modeRef.current = startMode; setMode(startMode);
     wantedMic.current = continuing && recoveryMic.current !== null ? recoveryMic.current : startMode === "talk";
     setStatus("connecting"); setError("");
-    if (!continuing) setMessages([]);
+    if (!continuing) {
+      setMessages([]);
+      setSampleEmail(null); setEmailMessage(""); setEmailConsent(false); setEmail(""); completedDemo.current = null;
+      setDemoIdentity(null); setVisitor({ name: "", business: "", email: "", phone: "", owner_details_confirmed: false }); setVisitorMessage("");
+    }
     setInterim(""); setSpeechPending(null);
     setMuted(!wantedMic.current); setHolding(false); setNeedsPlayback(false);
     assistantGenerated.current = false;
@@ -598,6 +648,10 @@ export function VoiceAssistant() {
             if (isCurrent() && level > 0.001 && assistantSpeaking.current) responseWatchdog.current?.progress();
           },
           onLLMFunctionCallStopped: (data) => {
+            if (isCurrent() && niche && data.function_name === "complete_sample_appointment" && !data.cancelled) {
+              void loadSampleEmail();
+              return;
+            }
             if (!isCurrent() || data.function_name !== "create_appointment" || data.cancelled) return;
             if (!isSuccessfulBookingResult(data.result)) return;
             bookingComplete.current = true; bookingConfirmationStarted.current = false;
@@ -630,6 +684,14 @@ export function VoiceAssistant() {
           },
           onServerMessage: (message) => {
             if (!isCurrent() || !message || typeof message !== "object") return;
+            if (message.type === "demo-complete" && niche) {
+              void loadSampleEmail();
+              return;
+            }
+            if (message.type === "demo-disabled" && niche) {
+              void end("demo_disabled").then(() => setError("The studio has switched this sample demo off."));
+              return;
+            }
             if (message.type === "voice-opening") {
               openingPending.current = false;
               if (message.committed) responseWatchdog.current?.wait("reply");
@@ -726,6 +788,7 @@ export function VoiceAssistant() {
         conversation_id: conversationId.current,
         session_token: sessionToken.current,
         recovery_attempt: recoveryAttempt,
+        niche,
       } } });
       if (!isCurrent()) return;
       if (firstText) { await sendText(firstText); if (isCurrent()) setDraft(""); }
@@ -740,6 +803,7 @@ export function VoiceAssistant() {
       } else {
         await failVoice(cause instanceof Error && cause.name === "NotAllowedError"
           ? "Microphone access was declined. Allow it in your browser and try the voice call again."
+          : niche ? "This sample demo is switched off or could not connect. Please try again later or contact the studio."
           : "The voice connection is unavailable right now. Use Reconnect to try again shortly.");
       }
     } finally {
@@ -800,25 +864,37 @@ export function VoiceAssistant() {
 
   return (
     <>
-      <button className={styles.launcher} onClick={() => dialog.current?.showModal()} aria-haspopup="dialog">
+      {!inline && <button className={styles.launcher} onClick={() => dialog.current?.showModal()} aria-haspopup="dialog">
         <span className={styles.launcherVisual} aria-hidden="true"><span className={styles.launcherWave}>{Array.from({ length: 7 }, (_, i) => <i key={i} style={{ animationDelay: `${i * -0.17}s` }} />)}</span></span>
         <span className={styles.launcherCopy}>Talk with our sales representative<small>Let’s talk · Book an appointment</small></span><ArrowUpRight size={18} aria-hidden="true" />
-      </button>
-      <dialog ref={dialog} className={styles.dialog} aria-labelledby="voice-title" onCancel={(event) => { event.preventDefault(); close(); }}>
-        <header className={styles.header}><h2 id="voice-title">Sales Representative</h2><div className={styles.headerActions}>{active && <button className={styles.sound} aria-label={sound ? "Mute representative audio" : "Enable representative audio"} aria-pressed={!sound} onClick={() => setSound(!sound)}>{sound ? <Volume2 size={16} /> : <VolumeX size={16} />}</button>}<button onClick={close} className={styles.iconButton} aria-label="Close and end conversation"><X size={20} /></button></div></header>
+      </button>}
+      <dialog ref={dialog} open={inline || undefined} className={`${styles.dialog} ${inline ? styles.inlineDialog : ""}`} aria-labelledby="voice-title" onCancel={(event) => { event.preventDefault(); close(); }}>
+        <header className={styles.header}><h2 id="voice-title">{niche ? "Sample receptionist" : "Sales Representative"}</h2><div className={styles.headerActions}>{active && <button className={styles.sound} aria-label={sound ? "Mute representative audio" : "Enable representative audio"} aria-pressed={!sound} onClick={() => setSound(!sound)}>{sound ? <Volume2 size={16} /> : <VolumeX size={16} />}</button>}{!inline && <button onClick={close} className={styles.iconButton} aria-label="Close and end conversation"><X size={20} /></button>}</div></header>
         <div className={styles.callVisual} data-state={status}>
           <div className={styles.waveform} aria-hidden="true">{Array.from({ length: 27 }, (_, i) => <i key={i} style={{ animationDelay: `${i * -0.13}s`, height: `${12 + (1 - Math.abs(i - 13) / 13) * 34}px` }} />)}</div>
-          <p role="status">{status === "idle" ? "Your next step starts with a conversation." : statusLabel}</p>
+          <p role="status">{status === "idle" ? niche ? "Play the customer. Start a sample call below." : "Your next step starts with a conversation." : statusLabel}</p>
         </div>
         <div className={styles.modes} role="group" aria-label="Conversation input">
           <button aria-pressed={mode === "talk"} disabled={autoClosing.current || status === "connecting" || status === "recovering"} onClick={() => switchMode("talk")}><Mic size={15} /> Open mic</button>
           <button aria-pressed={mode === "hold"} disabled={autoClosing.current || status === "connecting" || status === "recovering"} onClick={() => switchMode("hold")}><MicOff size={15} /> Push to talk</button>
         </div>
         {(active || messages.length > 0 || interim) && <div className={styles.transcript} ref={transcript} role="log" aria-label="Conversation transcript" aria-live="polite" aria-relevant="additions text">
-          {!messages.length && !interim ? <div className={styles.empty}><p>You’re connected. Say hello or type below.</p></div> : messages.map((message) => <div className={styles.message} data-role={message.role} key={message.id}><span>{message.role === "user" ? "YOU" : "SALES REPRESENTATIVE"}<time>{message.time}</time></span><p>{message.role === "assistant" ? <><span className={styles.spoken}>{message.text.slice(0, message.spoken)}</span><span className={styles.pending}>{message.text.slice(message.spoken)}</span></> : message.text}</p>{message.interrupted && <small>Reply interrupted by the connection.</small>}</div>)}
+          {!messages.length && !interim ? <div className={styles.empty}><p>You’re connected. Say hello or type below.</p></div> : messages.map((message) => <div className={styles.message} data-role={message.role} key={message.id}><span>{message.role === "user" ? "YOU" : niche ? "SAMPLE RECEPTIONIST" : "SALES REPRESENTATIVE"}<time>{message.time}</time></span><p>{message.role === "assistant" ? <><span className={styles.spoken}>{message.text.slice(0, message.spoken)}</span><span className={styles.pending}>{message.text.slice(message.spoken)}</span></> : message.text}</p>{message.interrupted && <small>Reply interrupted by the connection.</small>}</div>)}
           {(interim || speechPending) && <div className={styles.message} data-role="user"><span>YOU · {speechPending === "transcribing" ? "TRANSCRIBING" : "SPEAKING"}</span><p>{interim || (speechPending === "transcribing" ? "Transcribing…" : "Listening…")}</p></div>}
         </div>}
         {error && <p className={styles.error} role="alert">{error}</p>}
+        {niche && (active || sampleEmail) && <section className={styles.emailPreview} aria-label="Sample owner email">
+          {!sampleEmail && <button disabled={emailBusy} onClick={() => void loadSampleEmail()}>View sample owner email</button>}
+          {sampleEmail && <><h3>What an owner would receive</h3><strong>{sampleEmail.subject}</strong><pre>{sampleEmail.text}</pre>
+            {!sampleEmail.sending_available && sampleEmail.delivery === "not_sent" && <p>Sending is off while the studio reviews the demo and configures its verified email sender. You can review the sample here.</p>}
+            {sampleEmail.delivery === "not_sent" && sampleEmail.sending_available && <form onSubmit={(event) => { event.preventDefault(); void loadSampleEmail(true); }}>
+              <label>Your email<input type="email" required maxLength={254} autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+              <label><input type="checkbox" required checked={emailConsent} onChange={(event) => setEmailConsent(event.target.checked)} /> This is my email address. Send me one labelled sample appointment email.</label>
+              <p>Your address is used for this sample email and abuse prevention. It is not a real booking or an invitation.</p>
+              <button disabled={emailBusy || !emailConsent || !email.trim()} type="submit">{emailBusy ? "Preparing…" : "Send sample to my inbox"}</button>
+            </form>}</>}
+          {emailMessage && <p role="status">{emailMessage}</p>}
+        </section>}
         {needsPlayback && <button className={styles.playback} onClick={() => { void audio.current?.play().then(() => setNeedsPlayback(false)).catch(() => {}); }}><Volume2 size={16} /> Tap to hear the assistant</button>}
         {active && status !== "recovering" && <form className={styles.composer} onSubmit={submit}><label className={styles.srOnly} htmlFor="studio-message">Your message</label><input id="studio-message" disabled={autoClosing.current} value={draft} maxLength={2000} onChange={(event) => setDraft(event.target.value)} placeholder="Type a message…" autoComplete="off" /><button aria-label="Send message" disabled={autoClosing.current || !draft.trim() || sending} type="submit"><Send size={18} /></button></form>}
         {active && <details className={styles.devices}><summary>Microphone settings</summary><div><label htmlFor="studio-mic">Microphone</label><select id="studio-mic" disabled={autoClosing.current || status === "recovering"} value={selectedMic} onChange={(event) => { setSelectedMic(event.target.value); client.current?.updateMic(event.target.value); }}><option value="">System default</option>{mics.filter((device) => device.deviceId).map((device) => <option key={device.deviceId} value={device.deviceId}>{device.label || "Microphone"}</option>)}</select></div></details>}
@@ -827,6 +903,17 @@ export function VoiceAssistant() {
         </div>
         <audio ref={audio} autoPlay playsInline muted={!sound} />
       </dialog>
+      {niche && demoIdentity && <section className={styles.visitorDetails} aria-label="Share your business details">
+        <h2>Want this for your business?</h2><p>Share your own details here if you’d like the studio to follow up. We’ll save them with the demo you tried. Your sample customer details stay separate.</p>
+        <form onSubmit={saveVisitor}>
+          <label>Your name<input autoComplete="name" maxLength={100} value={visitor.name} onChange={event => setVisitor({ ...visitor, name: event.target.value })} /></label>
+          <label>Business<input autoComplete="organization" maxLength={150} value={visitor.business} onChange={event => setVisitor({ ...visitor, business: event.target.value })} /></label>
+          <label>Email<input type="email" autoComplete="email" maxLength={254} value={visitor.email} onChange={event => setVisitor({ ...visitor, email: event.target.value })} /></label>
+          <label>Phone<input type="tel" autoComplete="tel" maxLength={50} value={visitor.phone} onChange={event => setVisitor({ ...visitor, phone: event.target.value })} /></label>
+          <label className={styles.visitorConsent}><input type="checkbox" required checked={visitor.owner_details_confirmed} onChange={event => setVisitor({ ...visitor, owner_details_confirmed: event.target.checked })} /> These are my business details. Save them with this demo so Vibecoderzz can follow up.</label>
+          <button type="submit" disabled={visitorBusy || !visitor.owner_details_confirmed || !Object.values(visitor).some(value => typeof value === "string" && value.trim())}>{visitorBusy ? "Saving…" : "Save my details"}</button>
+        </form>{visitorMessage && <p role="status">{visitorMessage}</p>}
+      </section>}
     </>
   );
 }

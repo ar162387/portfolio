@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, AudioLines, Check, Download, FileCode2, History, Play, Save, ShieldCheck, Upload, Wrench } from "lucide-react";
 import styles from "./playground.module.css";
@@ -101,12 +102,12 @@ export function AgentPlayground() {
     finally { setBusy(""); if (upload.current) upload.current.value = ""; }
   }
 
-  if (!state || !config) return <main className={styles.shell}><a href="/studio-admin">← Back to dashboard</a><h1>Agent playground</h1><p role="status">{error || "Loading your agent…"}</p>{error && <button onClick={() => void load()}>Retry</button>}</main>;
+  if (!state || !config) return <main className={styles.shell}><Link href="/studio-admin">← Back to dashboard</Link><h1>Agent playground</h1><p role="status">{error || "Loading your agent…"}</p>{error && <button onClick={() => void load()}>Retry</button>}</main>;
   const differs = JSON.stringify(config) !== JSON.stringify(state.published);
   const unsaved = JSON.stringify(config) !== JSON.stringify(state.draft);
   return <main className={styles.shell}>
     <header className={styles.header}>
-      <div><a className={styles.back} href="/studio-admin"><ArrowLeft size={14} /> Conversation dashboard</a><p className={styles.eyebrow}>VOICE STUDIO / CONFIGURATION</p><h1>Make it <em>sound like you.</em></h1><p className={styles.intro}>Shape the voice. Refine the welcome. Keep the booking flow intact.</p></div>
+      <div><Link className={styles.back} href="/studio-admin"><ArrowLeft size={14} /> Conversation dashboard</Link><p className={styles.eyebrow}>VOICE STUDIO / CONFIGURATION</p><h1>Make it <em>sound like you.</em></h1><p className={styles.intro}>Shape the voice. Refine the welcome. Keep the booking flow intact.</p></div>
       <div className={styles.live}><span /> Published voice<strong>{state.published.voice} · {state.published.accent}</strong><small>{state.published.model}</small></div>
     </header>
     <div className={styles.toolbar}>

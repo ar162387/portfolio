@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const COOKIE = "vibecoderzz_studio_session";
-const allowed = new Set(["login", "logout", "me", "metrics", "conversations", "agent", "agent-prompt", "agent-audition"]);
+const allowed = new Set(["login", "logout", "me", "metrics", "conversations", "agent", "agent-prompt", "agent-audition", "demos", "demo-activity"]);
 
 function sameOrigin(request: NextRequest) {
   const origin = request.headers.get("origin");
@@ -17,7 +17,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
   const serviceToken = process.env.VOICE_AGENT_TOKEN;
   if (!backend || !serviceToken) return NextResponse.json({ error: "Dashboard is not configured." }, { status: 503 });
   const { path } = await context.params;
-  if (!path.length || !allowed.has(path[0]) || (path.length > 2) || (path.length === 2 && path[0] !== "conversations")) {
+  if (!path.length || !allowed.has(path[0]) || (path.length > 2) || (path.length === 2 && !["conversations", "demo-activity"].includes(path[0]))) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
   if (request.method !== "GET" && !sameOrigin(request)) {

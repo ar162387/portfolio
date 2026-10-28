@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, CalendarCheck, LogOut, MessageSquareText, Search, Target, Users, X } from "lucide-react";
 import styles from "./dashboard.module.css";
+import { DemoControls } from "./DemoControls";
+import { DemoActivity } from "./DemoActivity";
 
 type Metrics = {
   total_conversations: number; qualified_leads: number; booked_consultations: number;
@@ -78,9 +81,12 @@ export function Dashboard() {
   return <main className={styles.dashboardShell}>
     <header className={styles.dashboardHeader}>
       <div><p className={styles.kicker}>VIBECODERZZ / LEAD INTELLIGENCE</p><h1>Conversation <em>pipeline.</em></h1></div>
-      <a className={styles.signOut} href="/studio-admin/playground">Agent playground</a>
+      <Link className={styles.signOut} href="/studio-admin/playground">Agent playground</Link>
       <button className={styles.signOut} onClick={signOut}><LogOut size={16} /> Sign out</button>
     </header>
+
+    <DemoControls />
+    <DemoActivity />
 
     <section className={styles.metrics} aria-label="Lead performance">
       <article><MessageSquareText /><span>Conversations</span><strong>{metrics?.total_conversations ?? "—"}</strong><small>Every voice and chat session</small></article>

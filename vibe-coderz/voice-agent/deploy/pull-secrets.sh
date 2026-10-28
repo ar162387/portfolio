@@ -49,6 +49,10 @@ allowed = required | {
     "MANAGED_TURN_ENABLED",
     "CLOUDFLARE_TURN_KEY_ID",
     "CLOUDFLARE_TURN_API_TOKEN",
+    "NICHE_DEMOS_ALLOWED",
+    "RESEND_API_KEY",
+    "DEMO_EMAIL_FROM",
+    "DEMO_EMAIL_SEND_APPROVED",
 }
 settings = {key: value for key, value in values.items() if key in allowed and value != ""}
 settings.update({

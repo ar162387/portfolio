@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isNicheKey } from "@/lib/niche-demos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,17 +23,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Expected JSON." }, { status: 415 });
   }
   try {
-    const input = await request.json() as { channel?: string };
+    const raw = await request.text();
+    if (raw.length > 2000) return NextResponse.json({ error: "Request too large." }, { status: 413 });
+    const input = JSON.parse(raw) as { channel?: string; niche?: unknown };
+    if (!input || typeof input !== "object" || (input.niche != null && !isNicheKey(input.niche))) {
+      return NextResponse.json({ error: "Unknown sample demo." }, { status: 400 });
+    }
     const channel: "voice" | "push_to_talk" | "text" = input.channel === "push_to_talk"
       ? "push_to_talk" : input.channel === "text" ? "text" : "voice";
     const response = await fetch(`${config.backend}/session`, {
       method: "POST",
       headers: { Authorization: `Bearer ${config.token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ channel }),
+      body: JSON.stringify({ channel, niche: input.niche }),
       cache: "no-store",
       signal: AbortSignal.timeout(7000),
     });
-    if (!response.ok) throw new Error("session failed");
+    if (!response.ok) return NextResponse.json({ error: input.niche ? "This sample demo is currently unavailable. Please contact the studio." : "Assistant unavailable." }, { status: response.status });
     const payload = await response.json();
     return NextResponse.json({
       conversationId: payload.conversation_id,

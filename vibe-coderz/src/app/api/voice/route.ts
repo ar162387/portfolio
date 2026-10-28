@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { services, studio } from "@/data/studio";
+import { isNicheKey } from "@/lib/niche-demos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +37,11 @@ async function forward(request: NextRequest) {
         return NextResponse.json({ error: "Invalid request." }, { status: 400 });
       }
       // Whitelist transport fields. Business context always comes from our published content.
+      if (payload.requestData?.niche != null && !isNicheKey(payload.requestData.niche)) {
+        return NextResponse.json({ error: "Unknown sample demo." }, { status: 400 });
+      }
       body = JSON.stringify(request.method === "POST" ? {
+        niche: payload.requestData?.niche,
         sdp: payload.sdp, type: payload.type, pc_id: payload.pc_id, restart_pc: payload.restart_pc,
         greet: payload.requestData?.greet !== false,
         conversation_id: payload.requestData?.conversation_id,

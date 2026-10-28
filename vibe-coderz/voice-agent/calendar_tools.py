@@ -138,6 +138,10 @@ async def _cal_request(
 
 
 def calendar_tools_from_env(conversation_id: str | None = None) -> ToolsSchema | None:
+    if conversation_id:
+        from niche_demos import profile_for
+        if profile_for(conversation_id):
+            return None
     config = CalConfig.from_env()
     if not config:
         return None

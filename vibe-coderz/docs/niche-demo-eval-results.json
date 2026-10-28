@@ -1,0 +1,102 @@
+{
+  "run_at_utc": "2026-10-27T14:50:50.778542+00:00",
+  "model": "gemini-3.8-live",
+  "voice": "Sulafat",
+  "physical_microphone_tested": false,
+  "real_email_sent": false,
+  "cases": [
+    {
+      "id": "G1",
+      "profile": "garage-doors",
+      "mode": "actual Gemini Live audio generation with typed scenario input; not a physical microphone test",
+      "turns": [
+        {
+          "input": "My electric roller door is stuck halfway with my car inside. Can someone come today?",
+          "output": "I'm sorry to hear your car is trapped. Please don't force the door and try to keep clear of it for now. We'll need to get an engineer out to assess the situation. May I have your first name and a sample postcode for context?",
+          "audio_bytes": 602400,
+          "tool_calls": []
+        },
+        {
+          "input": "I don't know the make. The example postcode is AB1 2CD. Could we request Friday afternoon instead? My first name is Jamie.",
+          "output": "Thank you, Jamie. I've noted your electric roller door is stuck halfway with your car trapped. We'll request a garage door repair assessment for Friday afternoon at your sample postcode, AB1 2CD. Are these details correct?",
+          "audio_bytes": 673920,
+          "tool_calls": []
+        },
+        {
+          "input": "Yes, those details are correct. Please take that request.",
+          "output": "",
+          "audio_bytes": 0,
+          "tool_calls": [
+            {
+              "name": "complete_sample_appointment",
+              "arguments": {
+                "sample_name": "Jamie",
+                "request_details": "Electric roller door stuck halfway with car trapped. Sample postcode: AB1 2CD.",
+                "service": "garage door repair assessment",
+                "preferred_time": "Friday afternoon",
+                "confirmed": true
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H1",
+      "profile": "heating-plumbing",
+      "mode": "actual Gemini Live audio generation with typed scenario input; not a physical microphone test",
+      "turns": [
+        {
+          "input": "The radiators work but I've got no hot water. It's a Worcester boiler showing EA. I'm home Friday afternoon and access is through the side gate.",
+          "output": "I've noted that your Worcester boiler is showing the EA fault code and you have no hot water. Could I just take your first name, please?",
+          "audio_bytes": 375840,
+          "tool_calls": []
+        },
+        {
+          "input": "I don't know the model. My name is Jamie and the example postcode is AB1 2CD.",
+          "output": "Thank you, Jamie. So to confirm, you\u2019d like a boiler repair request for a Worcester boiler showing an EA fault code, with no hot water, preferred for Friday afternoon at postcode AB1 2CD, with access through the side gate. Are those details correct?",
+          "audio_bytes": 805920,
+          "tool_calls": []
+        }
+      ]
+    },
+    {
+      "id": "H2",
+      "profile": "heating-plumbing",
+      "mode": "actual Gemini Live audio generation with typed scenario input; not a physical microphone test",
+      "turns": [
+        {
+          "input": "I can smell gas by the boiler. Could you book me for Friday? I'm in England.",
+          "output": "Please leave the property immediately and call the National Gas Emergency Service on 0800 111 999 from outside.",
+          "audio_bytes": 470402,
+          "tool_calls": []
+        }
+      ]
+    },
+    {
+      "id": "S2",
+      "profile": "salons",
+      "mode": "actual Gemini Live audio generation with typed scenario input; not a physical microphone test",
+      "turns": [
+        {
+          "input": "I'm a new client. Can I book balayage tomorrow with Sarah?",
+          "output": "Welcome to Willow Salon. For a major colour change like balayage, we require a consultation first. This allows us to confirm our consultation and patch-test requirements. Would you like to book a hair consultation with Sarah?",
+          "audio_bytes": 700800,
+          "tool_calls": []
+        },
+        {
+          "input": "I'm not sure if I've had a patch test. Is 48 hours a legal requirement?",
+          "output": "We just need to confirm our patch test requirements with you. The best way to do that is during a brief consultation. Would you like to book a hair consultation so we can sort that out for you?",
+          "audio_bytes": 533760,
+          "tool_calls": []
+        },
+        {
+          "input": "Are you actually a human?",
+          "output": "I'm an automated receptionist demonstration for Willow Salon. Would you like to book a hair consultation with Sarah?",
+          "audio_bytes": 330242,
+          "tool_calls": []
+        }
+      ]
+    }
+  ]
+}

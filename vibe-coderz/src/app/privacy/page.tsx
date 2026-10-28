@@ -23,10 +23,16 @@ export default function Privacy() {
           <p>Google processes the conversation under its Gemini API terms. Its free tier may use submitted content and responses to improve its products. Avoid sharing sensitive information. You can mute your microphone or end the conversation at any time. If you ask the assistant to book a consultation, the name, email address, optional phone number, timezone, and appointment details you explicitly confirm are sent to Cal.com to check availability and create the booking. Cal.com then retains the booking under its service terms. Email remains available if you prefer to speak with a person.</p>
         </section>
         <section>
+          <h2>Sample niche demos</h2>
+          <p>Our private dashboard records which niche demo you try, its text transcript and any generated sample appointment card. You remain an anonymous visitor unless you choose to share your own details. If you provide your business/contact details for studio follow-up, we store those with the demo interaction, separately from the sample customer you play in the call. This does not subscribe you to marketing or send a message automatically.</p>
+          <p>The garage door, salon, and heating and plumbing demos use fictional businesses. Microphone audio and text use the same Pipecat and Google Gemini flow described above. We save text transcripts and the sample appointment request for demo review; these demos do not create real calendar bookings or qualified sales leads. Please use made-up customer details.</p>
+          <p>If you choose to send a sample appointment email after completing the demo, we send the clearly labelled example through Resend to the address you enter and confirm as your own. We store that address and the delivery attempt to prevent repeat sends. This creates no calendar event or invitation and does not subscribe you to marketing.</p>
+        </section>
+        <section>
           <h2>Your choices</h2>
           <p>You can control or delete cookies through your browser settings. For questions about this policy or your information, email {" "}<a href="mailto:Vibe.coderz83@gmail.com">Vibe.coderz83@gmail.com</a>.</p>
         </section>
-        <p className="privacy-updated">Last updated: 14 September 2026.</p>
+        <p className="privacy-updated">Last updated: 29 October 2026.</p>
       </article>
     </>
   );

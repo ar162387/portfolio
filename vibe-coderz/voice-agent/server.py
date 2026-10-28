@@ -44,6 +44,7 @@ logger.add(
 )
 
 import agent_config as agent_settings
+import niche_demos
 from bot import _env_seconds, run_bot  # noqa: E402
 from dashboard_store import (  # noqa: E402
     add_message,
@@ -113,11 +114,23 @@ starts: deque[float] = deque()
 lock = asyncio.Lock()
 
 
-async def watch_connection(connection):
+async def watch_connection(connection, conversation_id=None):
     """Bound abandoned handshakes and lost browsers independently of the UI."""
     started = time.monotonic()
     last_connected = None
+    demo = conversation_id and await asyncio.to_thread(niche_demos.profile_for, conversation_id)
     while True:
+        if demo:
+            try:
+                await asyncio.to_thread(niche_demos.require_active, conversation_id)
+            except niche_demos.DemoUnavailable:
+                live = live_workers.get(conversation_id)
+                if live:
+                    try:
+                        await asyncio.wait_for(live[1].rtvi.send_server_message({'type': 'demo-disabled'}), 0.5)
+                    except Exception:
+                        pass
+                return
         now = time.monotonic()
         if connection.is_connected():
             last_connected = now
@@ -135,9 +148,11 @@ async def serve_session(connection, body):
     conversation_id = None
     children = []
     try:
+        validate_demo_session(body.conversation_id, body.niche)
         if body.conversation_id and _verify_session_token(body.conversation_id, body.session_token):
             attached = await asyncio.to_thread(
-                attach_transport, body.conversation_id, connection.pc_id, body.channel
+                attach_transport, body.conversation_id, connection.pc_id,
+                'demo' if body.niche else body.channel
             )
             if not attached:
                 raise RuntimeError("Conversation is unavailable")
@@ -170,7 +185,7 @@ async def serve_session(connection, body):
             conversation_id=conversation_id, history=history, model=model, resume=resume,
             worker_ready=worker_ready, agent_config=configuration,
         ))
-        watcher = asyncio.create_task(watch_connection(connection))
+        watcher = asyncio.create_task(watch_connection(connection, conversation_id))
         children = [worker, watcher]
         done, _ = await asyncio.wait(children, return_when=asyncio.FIRST_COMPLETED)
         for task in done:
@@ -281,6 +296,7 @@ class Offer(BaseModel):
     session_token: str = Field(default="", max_length=500)
     recovery_attempt: int = Field(default=0, ge=0, le=1)
     studio_knowledge: Knowledge
+    niche: niche_demos.ProfileKey | None = None
 
 
 class Candidate(BaseModel):
@@ -296,6 +312,19 @@ class Patch(BaseModel):
 
 class SessionStart(BaseModel):
     channel: Literal["voice", "push_to_talk", "text"] = "voice"
+    niche: niche_demos.ProfileKey | None = None
+
+
+def validate_demo_session(conversation_id, niche):
+    """A reconnect cannot turn a demo into the main agent, or swap niches."""
+    pinned = niche_demos.profile_for(conversation_id) if conversation_id else None
+    if pinned != niche:
+        raise HTTPException(409, 'Demo profile does not match this session.')
+    if pinned:
+        try:
+            niche_demos.require_active(conversation_id)
+        except niche_demos.DemoUnavailable as exc:
+            raise HTTPException(503, str(exc)) from exc
 
 
 class SessionEnd(BaseModel):
@@ -432,9 +461,19 @@ async def ice_configuration():
 @app.post("/session", dependencies=[Depends(authenticate)])
 async def create_session(body: SessionStart):
     require_key()
+    if body.niche and not await asyncio.to_thread(lambda: niche_demos.control()['enabled']):
+        raise HTTPException(503, 'Sample demos are currently switched off.')
     conversation_id = await asyncio.to_thread(
-        start_conversation, transport_id=None, channel=body.channel
+        start_conversation, transport_id=None, channel='demo' if body.niche else body.channel
     )
+    if body.niche:
+        try:
+            await asyncio.to_thread(niche_demos.bind, conversation_id, body.niche)
+            published = agent_settings.AgentConfig.model_validate((await asyncio.to_thread(agent_settings.state))['published'])
+            await asyncio.to_thread(agent_settings.for_conversation, conversation_id,
+                initial_config=niche_demos.template(body.niche, published))
+        except niche_demos.DemoUnavailable as exc:
+            raise HTTPException(503, str(exc)) from exc
     return {
         "conversation_id": conversation_id,
         "session_token": _session_token(conversation_id),
@@ -463,6 +502,8 @@ async def close_session(body: SessionEnd):
 
 @app.post("/input", dependencies=[Depends(authenticate)])
 async def deliver_typed_input(body: VoiceInput):
+    if niche_demos.profile_for(body.conversation_id):
+        validate_demo_session(body.conversation_id, niche_demos.profile_for(body.conversation_id))
     try:
         async with asyncio.timeout(_env_seconds("VOICE_INPUT_TIMEOUT_SECONDS", 10, 0.05)):
             return await _deliver_typed_input(body)
@@ -593,6 +634,7 @@ async def offer(body: Offer):
     require_key()
     if body.conversation_id and not _verify_session_token(body.conversation_id, body.session_token):
         raise HTTPException(401, "Invalid session")
+    validate_demo_session(body.conversation_id, body.niche)
     is_new = not body.pc_id
     async with lock:
         if body.pc_id and body.pc_id not in sessions:
@@ -654,6 +696,91 @@ async def dashboard_logout(token: str = Depends(dashboard_token)):
 @app.get("/dashboard/me", dependencies=[Depends(authenticate)])
 async def dashboard_me(token: str = Depends(dashboard_token)):
     return await asyncio.to_thread(authenticated_user, token)
+
+
+class DemoToggle(BaseModel):
+    enabled: bool
+
+
+class DemoEmailRequest(BaseModel):
+    conversation_id: str = Field(max_length=36)
+    session_token: str = Field(max_length=500)
+    consent: niche_demos.EmailConsent | None = None
+
+
+class DemoVisitorRequest(BaseModel):
+    conversation_id: str = Field(max_length=36)
+    session_token: str = Field(max_length=500)
+    details: niche_demos.VisitorDetails
+
+
+@app.post('/demo-visitor', dependencies=[Depends(authenticate)])
+async def capture_demo_visitor(body: DemoVisitorRequest):
+    if not _verify_session_token(body.conversation_id, body.session_token):
+        raise HTTPException(401, 'Invalid session')
+    try:
+        return await asyncio.to_thread(niche_demos.save_visitor, body.conversation_id, body.details)
+    except niche_demos.DemoUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get('/dashboard/demo-activity', dependencies=[Depends(authenticate)])
+async def demo_activity(niche: str = Query(default='', max_length=40), search: str = Query(default='', max_length=100),
+                        _token: str = Depends(dashboard_token)):
+    if niche and niche not in niche_demos.PROFILES:
+        raise HTTPException(400, 'Unknown niche')
+    return await asyncio.to_thread(niche_demos.activity, niche=niche, search=search)
+
+
+@app.get('/dashboard/demo-activity/{conversation_id}', dependencies=[Depends(authenticate)])
+async def demo_activity_detail(conversation_id: str, _token: str = Depends(dashboard_token)):
+    item = await asyncio.to_thread(niche_demos.activity, conversation_id=conversation_id)
+    if item is None:
+        raise HTTPException(404, 'Demo not found')
+    return item
+
+
+@app.get('/dashboard/demos', dependencies=[Depends(authenticate)])
+async def demo_status(_token: str = Depends(dashboard_token)):
+    return await asyncio.to_thread(niche_demos.control)
+
+
+@app.post('/dashboard/demos', dependencies=[Depends(authenticate)])
+async def toggle_demos(body: DemoToggle, _token: str = Depends(dashboard_token)):
+    try:
+        state = await asyncio.to_thread(niche_demos.set_enabled, body.enabled)
+    except niche_demos.DemoUnavailable as exc:
+        raise HTTPException(409, str(exc)) from exc
+    if not body.enabled:
+        # Watchers enforce the same persisted generation across backend workers.
+        for conversation_id, (_pc_id, task, _connection) in list(voice_conversations.items()):
+            if await asyncio.to_thread(niche_demos.profile_for, conversation_id):
+                live = live_workers.get(conversation_id)
+                if live:
+                    try:
+                        await asyncio.wait_for(live[1].rtvi.send_server_message({'type': 'demo-disabled'}), 0.5)
+                    except Exception:
+                        pass  # Worker cancellation still closes the transport.
+                task.cancel()
+    return state
+
+
+@app.post('/demo-email', dependencies=[Depends(authenticate)])
+async def sample_email_preview(body: DemoEmailRequest):
+    if not _verify_session_token(body.conversation_id, body.session_token):
+        raise HTTPException(401, 'Invalid session')
+    try:
+        if body.consent:
+            return await niche_demos.send_sample_email(body.conversation_id, body.consent)
+        return await asyncio.to_thread(niche_demos.email_preview, body.conversation_id)
+    except niche_demos.DemoUnavailable as exc:
+        raise HTTPException(503, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, 'Sample email delivery could not be confirmed. Check Resend before retrying.') from exc
 
 
 @app.get("/dashboard/metrics", dependencies=[Depends(authenticate)])

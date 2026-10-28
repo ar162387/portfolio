@@ -1,0 +1,13 @@
+Subject: [SAMPLE / DEMO] Appointment request for Johnny Garage Doors
+
+SAMPLE / DEMO ONLY. Fictional business and caller. No appointment has been booked.
+
+Business: Johnny Garage Doors
+Sample caller: Jamie
+Service: garage door survey
+Preferred time (UK local time, unchecked): Thursday at 2 pm
+
+Owner action in a real workflow: check availability and contact the customer to confirm.
+This demo created no calendar event, invitation or sales lead.
+
+Local preview only. No email sent.

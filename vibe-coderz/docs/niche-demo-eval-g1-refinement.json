@@ -1,0 +1,45 @@
+{
+  "run_at_utc": "2026-10-27T14:51:44.318607+00:00",
+  "model": "gemini-3.8-live",
+  "voice": "Sulafat",
+  "physical_microphone_tested": false,
+  "real_email_sent": false,
+  "cases": [
+    {
+      "id": "G1",
+      "profile": "garage-doors",
+      "mode": "actual Gemini Live audio generation with typed scenario input; not a physical microphone test",
+      "turns": [
+        {
+          "input": "My electric roller door is stuck halfway with my car inside. Can someone come today?",
+          "output": "I am sorry to hear your car is trapped. Please do not try to force the door, and please keep clear of it. May I please have your first name?",
+          "audio_bytes": 410880,
+          "tool_calls": []
+        },
+        {
+          "input": "I don't know the make. The example postcode is AB1 2CD. Could we request Friday afternoon instead? My first name is Jamie.",
+          "output": "Thank you, Jamie. To confirm, we have a request for a garage door repair assessment for an electric roller door that is stuck halfway, trapping a car. The postcode is AB1 2CD, and you have requested Friday afternoon. Is that correct?",
+          "audio_bytes": 743040,
+          "tool_calls": []
+        },
+        {
+          "input": "Yes, those details are correct. Please take that request.",
+          "output": "",
+          "audio_bytes": 0,
+          "tool_calls": [
+            {
+              "name": "complete_sample_appointment",
+              "arguments": {
+                "service": "garage door repair assessment",
+                "preferred_time": "Friday afternoon",
+                "sample_name": "Jamie",
+                "confirmed": true,
+                "request_details": "electric roller door stuck halfway, trapping a car, sample postcode AB1 2CD"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

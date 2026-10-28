@@ -137,3 +137,8 @@
   .call-example-progress button { flex-direction: column; align-items: flex-start; }
   .voice-demo-invite, .voice-offer-layout article { padding: 23px; }
 }
+.niche-demo-page { width: min(760px, calc(100% - 40px)); margin: 24px auto 80px; }
+.niche-demo-page h1 { margin: 18px 0 24px; font-size: clamp(36px, 6vw, 64px); line-height: 1.05; letter-spacing: -.04em; }
+.niche-demo-page > p { margin: 18px 0; line-height: 1.65; }
+.niche-demo-page a { text-decoration: underline; }
+.niche-demo-note { font-size: 13px; color: var(--muted); }

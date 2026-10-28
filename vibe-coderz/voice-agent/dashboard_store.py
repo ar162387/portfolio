@@ -244,7 +244,7 @@ def add_message(
         ))
         conversation.message_count += 1
         conversation.last_activity_at = _now()
-        if role == "user":
+        if role == "user" and conversation.channel != 'demo':
             conversation.user_turns += 1
             if conversation.lead_stage == "new":
                 conversation.lead_stage = "engaged"
@@ -297,7 +297,8 @@ def attach_transport(conversation_id: str, transport_id: str, channel: str) -> b
         if conversation is None or conversation.ended_at is not None:
             return False
         conversation.transport_id = transport_id[:100]
-        conversation.channel = channel[:30]
+        if conversation.channel != 'demo':
+            conversation.channel = channel[:30]
         conversation.last_activity_at = _now()
         return True
 
@@ -335,7 +336,7 @@ def _advance(conversation: Conversation, stage: str) -> None:
 def record_qualification(conversation_id: str, details: dict[str, Any]) -> None:
     with SessionLocal.begin() as db:
         conversation = db.get(Conversation, conversation_id)
-        if conversation is None:
+        if conversation is None or conversation.channel == 'demo':
             return
         conversation.offer_interest = str(details.get("offer_interest") or "unclear")[:50]
         conversation.company_type = str(details.get("company_type") or "")[:150] or None
@@ -351,7 +352,7 @@ def record_qualification(conversation_id: str, details: dict[str, Any]) -> None:
 def record_calendar_progress(conversation_id: str, stage: str) -> None:
     with SessionLocal.begin() as db:
         conversation = db.get(Conversation, conversation_id)
-        if conversation:
+        if conversation and conversation.channel != 'demo':
             _advance(conversation, stage)
             conversation.last_activity_at = _now()
 
@@ -359,7 +360,7 @@ def record_calendar_progress(conversation_id: str, stage: str) -> None:
 def record_booking(conversation_id: str, details: dict[str, Any]) -> None:
     with SessionLocal.begin() as db:
         conversation = db.get(Conversation, conversation_id)
-        if conversation is None:
+        if conversation is None or conversation.channel == 'demo':
             return
         _advance(conversation, "booked")
         conversation.status = "booked"
@@ -431,11 +432,11 @@ def logout(token: str) -> None:
 
 def metrics() -> dict[str, Any]:
     with SessionLocal() as db:
-        total = db.scalar(select(func.count()).select_from(Conversation)) or 0
-        qualified = db.scalar(select(func.count()).select_from(Conversation).where(Conversation.qualified)) or 0
-        booked = db.scalar(select(func.count()).select_from(Conversation).where(Conversation.status == "booked")) or 0
+        total = db.scalar(select(func.count()).select_from(Conversation).where(Conversation.channel != 'demo')) or 0
+        qualified = db.scalar(select(func.count()).select_from(Conversation).where(Conversation.channel != 'demo', Conversation.qualified)) or 0
+        booked = db.scalar(select(func.count()).select_from(Conversation).where(Conversation.channel != 'demo', Conversation.status == "booked")) or 0
         stages = {
-            stage: db.scalar(select(func.count()).select_from(Conversation).where(Conversation.lead_stage == stage)) or 0
+            stage: db.scalar(select(func.count()).select_from(Conversation).where(Conversation.channel != 'demo', Conversation.lead_stage == stage)) or 0
             for stage in STAGE_SCORES
         }
         return {
@@ -479,7 +480,7 @@ def _conversation_dict(item: Conversation) -> dict[str, Any]:
 
 def list_conversations(*, limit: int = 100, stage: str = "", search: str = "") -> list[dict[str, Any]]:
     with SessionLocal() as db:
-        query = select(Conversation)
+        query = select(Conversation).where(Conversation.channel != 'demo')
         if stage:
             query = query.where(Conversation.lead_stage == stage)
         if search:
