@@ -17,6 +17,6 @@ Public routes after release:
 
 No real email delivery is included in this release. Resend still requires the separately approved verified sender and controlled delivery check described in `niche-demos.md`.
 
-Validation: 86 backend tests and 20 browser/transport tests passed; lint and TypeScript passed. Production build is checked before pushing. A deployment is considered live only after backend health, dashboard endpoints, public page responses, and an actual voice smoke check succeed.
+Validation: 86 backend tests and 21 browser/transport tests passed; lint and TypeScript passed. Production build is checked before pushing. A deployment is considered live only after backend health, dashboard endpoints, public page responses, and an actual voice smoke check succeed.
 
 Rollback: use dashboard Emergency off immediately. Original source baseline is `0bfee0e860c6447460896ab844e712d2e0722a16`; the verified complete-history bundle is `/private/tmp/vibecoderzz-pre-niche-0bfee0e.bundle`. Before the backend release, record its actual current source hashes/Git SHA and back up its files/database/environment. Restore that exact backend backup and the prior Vercel deployment together if needed; retain additive tables and newer conversations. Never overwrite the live database with an older snapshot without a separate recovery decision.

@@ -217,3 +217,25 @@ test('confirmed demo notification opens the labelled email preview without sendi
     assert.match(h.text(), /What an owner would receive/);
   } finally { h.dispose(); }
 });
+
+test('voluntary business details stay available after End and save against the same niche session', async () => {
+  const h = harness({ niche: 'garage-doors' });
+  try {
+    h.button('Start talking').props.onClick(); await settle();
+    h.button('End').props.onClick(); await settle();
+    assert.match(h.text(), /Want this for your business/);
+    const field = (autoComplete) => h.elements().find(node => node.type === 'input' && node.props.autoComplete === autoComplete);
+    field('name').props.onChange({ target: { value: 'Alex' } });
+    field('organization').props.onChange({ target: { value: 'Example Doors' } });
+    const checkbox = h.elements().find(node => node.type === 'input' && node.props.type === 'checkbox');
+    checkbox.props.onChange({ target: { checked: true } });
+    const form = h.elements().find(node => node.type === 'form');
+    await form.props.onSubmit({ preventDefault() {} }); await settle();
+    const saved = h.requests.find(request => request.url === '/api/voice/demo-visitor');
+    assert.equal(saved.body.conversationId, 'conversation');
+    assert.equal(saved.body.details.name, 'Alex');
+    assert.equal(saved.body.details.business, 'Example Doors');
+    assert.equal(saved.body.details.owner_details_confirmed, true);
+    assert.match(h.text(), /Your details are saved/);
+  } finally { h.dispose(); }
+});
