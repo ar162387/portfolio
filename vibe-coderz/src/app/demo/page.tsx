@@ -2,44 +2,89 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { createElement } from "react";
 
-const agentId = "agent_2201m79rq68hfsx855wpt5p0rwcv";
-const hostedDemoUrl = `https://elevenlabs.io/app/talk-to?agent_id=${agentId}`;
+const widgetText = {
+  start_call: "Start call / بدء المكالمة",
+  new_call: "New call / مكالمة جديدة",
+  end_call: "End call / إنهاء المكالمة",
+  mute_microphone: "Mute microphone / كتم الميكروفون",
+  listening_status: "Listening / أسمعك",
+  speaking_status: "Speaking / يتحدث",
+  connecting_status: "Connecting / جارٍ الاتصال",
+  reconnecting_status: "Reconnecting / جارٍ إعادة الاتصال",
+  send_message: "Send / إرسال",
+  input_label: "Message / رسالة",
+  input_placeholder: "Send a message / أرسل رسالة",
+  input_placeholder_new_conversation: "Start a conversation / ابدأ محادثة",
+  initiate_feedback: "How was the call? / كيف كانت المكالمة؟",
+  user_ended_conversation: "Call ended / انتهت المكالمة",
+  agent_ended_conversation: "Call ended / انتهت المكالمة",
+  accept_terms: "Accept / موافق",
+  dismiss_terms: "Cancel / إلغاء",
+  error_occurred: "Connection error / خطأ في الاتصال",
+};
 
 export const metadata: Metadata = {
-  title: "Sky Global Holidays Voice Demo",
-  description: "Try the Sky Global Holidays AI travel assistant in Saudi Arabic.",
+  title: "Sky Global Holidays Demo",
+  description: "Try the Sky Global Holidays travel assistant in English and Saudi Arabic.",
   robots: { index: false, follow: false },
 };
 
 export default function DemoPage() {
   return (
-    <section className="mx-auto w-full max-w-3xl px-6 py-16 sm:py-24">
-      <h1 className="mb-3 text-4xl font-semibold tracking-tight sm:text-6xl">
-        Sky Global Holidays
-      </h1>
-      <p lang="ar" className="mb-6 text-xl">جرّب المساعد السياحي باللهجة السعودية</p>
-      <p className="max-w-lg leading-relaxed">
-        Start a call in Saudi Arabic. Ask about a family trip, change your travel dates, or compare two itineraries.
-      </p>
-      <div className="mt-8 rounded-xl border border-[var(--line)] bg-[var(--surface-raised)] p-5 sm:p-7">
-        <h2 className="mb-2 text-lg font-semibold">Try asking</h2>
-        <p lang="ar" dir="rtl" className="text-start text-lg leading-relaxed">
-          أبي أسافر من الرياض لجورجيا مع العائلة، وش تقترح علي؟
+    <section className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6 sm:py-20">
+      <header className="text-center">
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+          Sky Global Holidays <span className="whitespace-nowrap text-[var(--muted)]">Demo</span>
+        </h1>
+        <p lang="ar" dir="rtl" className="mt-3 text-xl">تجربة سكاي العالمية للعطلات</p>
+      </header>
+
+      <div className="mt-8 rounded-2xl border border-[var(--line)] bg-[var(--surface-raised)] px-3 pt-6 pb-4 sm:px-7">
+        <h2 className="text-center text-xl font-semibold">
+          Talk to the travel assistant <span lang="ar" dir="rtl" className="mt-1 block text-base">تحدّث مع المساعد السياحي</span>
+        </h2>
+        <p className="mt-3 text-center text-sm text-[var(--muted)]">
+          Tap the phone icon to start in English or Saudi Arabic.
+          <span lang="ar" dir="rtl" className="mt-1 block">اضغط على رمز الهاتف وابدأ بالإنجليزية أو باللهجة السعودية.</span>
         </p>
-        <p className="mt-4 text-sm leading-relaxed">
-          Use sample trip details. The AI assistant can summarize a request during the demo.
-        </p>
-        <a href={hostedDemoUrl} className="mt-5 inline-block text-sm underline underline-offset-4">
-          Open the call in a separate page
-        </a>
+
+        {createElement("elevenlabs-convai", {
+          "agent-id": "agent_2201m79rq68hfsx855wpt5p0rwcv",
+          "always-expanded": "true",
+          "placement": "bottom",
+          "mobile-fullscreen": "false",
+          "show-resize-button": "false",
+          "show-conversation-id": "false",
+          "text-contents": JSON.stringify(widgetText),
+          className: "!relative !inset-auto -mt-16 block h-[390px] w-full !z-auto",
+          style: {
+            "--el-base": "var(--paper)",
+            "--el-base-primary": "var(--ink)",
+            "--el-base-subtle": "var(--muted)",
+            "--el-base-border": "var(--line)",
+            "--el-base-hover": "var(--surface-raised)",
+            "--el-accent": "var(--accent-strong)",
+            "--el-accent-border": "var(--accent-strong)",
+            "--el-overlay-padding": "4px",
+          },
+        })}
+
+        <div className="mt-4 grid gap-4 border-t border-[var(--line)] px-2 pt-5 text-sm leading-relaxed sm:grid-cols-2 sm:gap-8">
+          <div lang="en">
+            <h3 className="font-semibold">Try asking</h3>
+            <p>“I’m planning a family trip from Riyadh to Georgia. What would you suggest?”</p>
+            <p className="mt-2 text-[var(--muted)]">Use sample travel details for this demo.</p>
+          </div>
+          <div lang="ar" dir="rtl">
+            <h3 className="font-semibold">جرّب تسأل</h3>
+            <p>«أبي أسافر من الرياض لجورجيا مع العائلة، وش تقترح علي؟»</p>
+            <p className="mt-2 text-[var(--muted)]">استخدم تفاصيل سفر افتراضية في هذه التجربة.</p>
+          </div>
+        </div>
       </div>
-      {createElement("elevenlabs-convai", {
-        "agent-id": agentId,
-        "start-call-text": "ابدأ المكالمة",
-        "end-call-text": "إنهاء المكالمة",
-      })}
+
       <Script
-        src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+        src="https://unpkg.com/@elevenlabs/convai-widget-embed@0.25.2/dist/index.js"
         strategy="afterInteractive"
       />
     </section>
