@@ -1,3 +1,4 @@
+import { ArrowDown } from "lucide-react";
 import type { Metadata } from "next";
 import Script from "next/script";
 import { createElement } from "react";
@@ -44,19 +45,26 @@ export default function DemoPage() {
           Talk to the travel assistant <span lang="ar" dir="rtl" className="mt-1 block text-base">تحدّث مع المساعد السياحي</span>
         </h2>
         <p className="mt-3 text-center text-sm text-[var(--muted)]">
-          Tap the phone icon to start in English or Saudi Arabic.
-          <span lang="ar" dir="rtl" className="mt-1 block">اضغط على رمز الهاتف وابدأ بالإنجليزية أو باللهجة السعودية.</span>
+          Speak in English or Saudi Arabic.
+          <span lang="ar" dir="rtl" className="mt-1 block">تحدّث بالإنجليزية أو باللهجة السعودية.</span>
         </p>
+
+        <p className="relative z-[1] mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-sm font-semibold">
+          <span>Tap the phone to call</span>
+          <span lang="ar" dir="rtl">اضغط على الهاتف للاتصال</span>
+        </p>
+        <ArrowDown aria-hidden="true" size={22} className="relative z-[1] mx-auto mt-2 block text-[var(--accent-strong)]" />
 
         {createElement("elevenlabs-convai", {
           "agent-id": "agent_2201m79rq68hfsx855wpt5p0rwcv",
           "always-expanded": "true",
+          "text-input": "false",
           "placement": "bottom",
           "mobile-fullscreen": "false",
           "show-resize-button": "false",
           "show-conversation-id": "false",
           "text-contents": JSON.stringify(widgetText),
-          className: "!relative !inset-auto -mt-16 block h-[390px] w-full !z-auto",
+          className: "!relative !inset-auto -mt-16 block h-[385px] w-full !z-auto",
           style: {
             "--el-base": "var(--paper)",
             "--el-base-primary": "var(--ink)",
@@ -65,7 +73,7 @@ export default function DemoPage() {
             "--el-base-hover": "var(--surface-raised)",
             "--el-accent": "var(--accent-strong)",
             "--el-accent-border": "var(--accent-strong)",
-            "--el-overlay-padding": "4px",
+            "--el-overlay-padding": "20px",
           },
         })}
 
