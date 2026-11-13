@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Try a sample receptionist", robots: 
 
 export default async function NicheDemoPage({ params }: { params: Promise<{ niche: string }> }) {
   const { niche } = await params;
-  if (!isNicheKey(niche)) notFound();
+  if (niche === "sky-global-holidays" || !isNicheKey(niche)) notFound();
   const demo = nicheDemos[niche];
   return <section className="niche-demo-page">
     <p className="eyebrow">TRY THE FRONT DESK / UK SAMPLE DEMO</p>
