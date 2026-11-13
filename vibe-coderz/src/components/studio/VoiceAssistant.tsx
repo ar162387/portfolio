@@ -72,6 +72,8 @@ export function VoiceAssistant({ niche, inline = false }: { niche?: NicheKey; in
     return () => window.removeEventListener("studio:open-assistant", open);
   }, []);
   const audio = useRef<HTMLAudioElement>(null);
+  const roomTone = useRef<HTMLAudioElement>(null);
+  const skyDemo = niche === "sky-global-holidays";
   const client = useRef<PipecatClient | null>(null);
   const cleanup = useRef<(() => Promise<void>) | null>(null);
   const closing = useRef<Promise<void>>(Promise.resolve());
@@ -169,6 +171,15 @@ export function VoiceAssistant({ niche, inline = false }: { niche?: NicheKey; in
     } finally { setEmailBusy(false); }
   }
   const active = ["listening", "speaking", "processing", "responding", "recovering"].includes(status);
+  const playRoomTone = active && sound && status !== "recovering";
+
+  useEffect(() => {
+    const track = roomTone.current;
+    if (!track || !playRoomTone) return;
+    track.volume = 0.5;
+    void track.play().catch(() => {});
+    return () => track.pause();
+  }, [playRoomTone]);
 
   function clearVoiceTimers() {
     if (idleTimer.current) clearTimeout(idleTimer.current);
@@ -197,6 +208,13 @@ export function VoiceAssistant({ niche, inline = false }: { niche?: NicheKey; in
     clearVoiceTimers();
     responseWatchdog.current?.stop();
     mic(false);
+    if (skyDemo) {
+      await end(reason);
+      setError(reason === "session_limit"
+        ? "Call limit reached. You can start another call. / انتهت مدة المكالمة. تقدر تبدأ مكالمة جديدة."
+        : "The call ended after a minute of silence. / انتهت المكالمة بعد دقيقة من الصمت.");
+      return;
+    }
     setStatus("speaking");
     setError(reason === "session_limit"
       ? "The 14-minute call limit was reached. Start a new conversation to continue."
@@ -902,6 +920,7 @@ export function VoiceAssistant({ niche, inline = false }: { niche?: NicheKey; in
           {active ? <>{mode === "talk" && <button className={styles.mute} disabled={autoClosing.current || status === "recovering"} aria-pressed={muted} onClick={() => mic(muted)}>{muted ? <MicOff size={18} /> : <Mic size={18} />}{muted ? "Unmute mic" : "Mute mic"}</button>}{mode === "hold" && <button className={styles.hold} disabled={autoClosing.current || status === "recovering"} aria-pressed={holding} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); hold(true); }} onPointerUp={() => hold(false)} onPointerCancel={() => hold(false)} onLostPointerCapture={() => hold(false)} onBlur={() => hold(false)} onKeyDown={(event) => { if ((event.key === " " || event.key === "Enter") && !event.repeat) { event.preventDefault(); hold(true); } }} onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); hold(false); } }}><Mic size={18} />{holding ? "Listening…" : "Hold to talk"}</button>}<button className={styles.end} onClick={() => void end("client_ended")}><PhoneOff size={18} /> End</button></> : status === "connecting" ? <button className={styles.start} onClick={() => void end("connection_cancelled")}>Cancel connection</button> : <><button className={styles.start} onClick={() => void (conversationId.current ? reconnect() : start())}><Mic size={18} />{conversationId.current ? "Reconnect" : "Start talking"}<ArrowUpRight size={18} /></button>{conversationId.current && <button className={styles.end} onClick={() => void end("client_ended")}><PhoneOff size={18} />End</button>}</>}
         </div>
         <audio ref={audio} autoPlay playsInline muted={!sound} />
+        {skyDemo && <audio ref={roomTone} src="/audio/sky-room-tone.mp3" loop preload="none" playsInline />}
       </dialog>
       {niche && demoIdentity && <section className={styles.visitorDetails} aria-label="Share your business details">
         <h2>Want this for your business?</h2><p>Share your own details here if you’d like the studio to follow up. We’ll save them with the demo you tried. Your sample customer details stay separate.</p>

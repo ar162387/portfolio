@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 from collections.abc import Callable
 
 from loguru import logger
+from pipecat.audio.turn.smart_turn.base_smart_turn import SmartTurnParams
+from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import LLMContextFrame
@@ -23,7 +25,7 @@ from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pipecat.workers.runner import WorkerRunner
 from pipecat.turns.user_start import VADUserTurnStartStrategy
-from pipecat.turns.user_stop import SpeechTimeoutUserTurnStopStrategy
+from pipecat.turns.user_stop import SpeechTimeoutUserTurnStopStrategy, TurnAnalyzerUserTurnStopStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
 from calendar_tools import calendar_tools_from_env
@@ -330,7 +332,9 @@ def create_worker(
     resume: bool = False,
     agent_config: AgentConfig | None = None,
 ) -> PipelineWorker:
-    from niche_demos import profile_for
+    from niche_demos import SKY_PROFILE, profile_for
+
+    profile = profile_for(conversation_id) if conversation_id else None
     transport = SmallWebRTCTransport(
         connection, TransportParams(audio_in_enabled=True, audio_out_enabled=True)
     )
@@ -350,7 +354,7 @@ def create_worker(
                 booking_enabled=booking_enabled,
                 opening_required=greet,
                 agent_config=agent_config,
-                demo=bool(conversation_id and profile_for(conversation_id)),
+                demo=bool(profile),
             ),
             enable_affective_dialog=os.getenv("GEMINI_AFFECTIVE_DIALOG", "false").lower()
             not in {"0", "false", "no"},
@@ -366,6 +370,13 @@ def create_worker(
         and item.get("delivery_state") in {"completed", "interrupted"}
     ]
     context = LLMContext(restored)
+    if profile == SKY_PROFILE:
+        turn_stop = TurnAnalyzerUserTurnStopStrategy(
+            turn_analyzer=LocalSmartTurnAnalyzerV3(params=SmartTurnParams(stop_secs=1.8)),
+            wait_for_transcript=False,
+        )
+    else:
+        turn_stop = SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.6, wait_for_transcript=False)
     aggregators = LLMContextAggregatorPair(
         context,
         realtime_service_mode=True,
@@ -373,10 +384,7 @@ def create_worker(
             vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.6)),
             user_turn_strategies=UserTurnStrategies(
                 start=[VADUserTurnStartStrategy()],
-                stop=[SpeechTimeoutUserTurnStopStrategy(
-                    user_speech_timeout=0.6,
-                    wait_for_transcript=False,
-                )],
+                stop=[turn_stop],
             ),
         ),
     )
