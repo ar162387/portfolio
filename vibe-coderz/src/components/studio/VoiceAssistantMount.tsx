@@ -6,6 +6,7 @@ import { VoiceAssistant } from "./VoiceAssistant";
 
 export function VoiceAssistantMount() {
   const pathname = usePathname();
-  // The niche page mounts the same component inline with an isolated session.
-  return isNicheKey(pathname.replace(/^\//, "").replace(/\/$/, "")) ? null : <VoiceAssistant />;
+  // Demo pages supply their own voice interface.
+  const route = pathname.replace(/^\//, "").replace(/\/$/, "");
+  return route === "demo" || isNicheKey(route) ? null : <VoiceAssistant />;
 }
