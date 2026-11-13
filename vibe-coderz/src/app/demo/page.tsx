@@ -1,28 +1,7 @@
 import { ArrowDown } from "lucide-react";
 import type { Metadata } from "next";
-import Script from "next/script";
-import { createElement } from "react";
-
-const widgetText = {
-  start_call: "Start call / بدء المكالمة",
-  new_call: "New call / مكالمة جديدة",
-  end_call: "End call / إنهاء المكالمة",
-  mute_microphone: "Mute microphone / كتم الميكروفون",
-  listening_status: "Listening / أسمعك",
-  speaking_status: "Speaking / يتحدث",
-  connecting_status: "Connecting / جارٍ الاتصال",
-  reconnecting_status: "Reconnecting / جارٍ إعادة الاتصال",
-  send_message: "Send / إرسال",
-  input_label: "Message / رسالة",
-  input_placeholder: "Send a message / أرسل رسالة",
-  input_placeholder_new_conversation: "Start a conversation / ابدأ محادثة",
-  initiate_feedback: "How was the call? / كيف كانت المكالمة؟",
-  user_ended_conversation: "Call ended / انتهت المكالمة",
-  agent_ended_conversation: "Call ended / انتهت المكالمة",
-  accept_terms: "Accept / موافق",
-  dismiss_terms: "Cancel / إلغاء",
-  error_occurred: "Connection error / خطأ في الاتصال",
-};
+import { VoiceAssistant } from "@/components/studio/VoiceAssistant";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Sky Global Holidays Demo",
@@ -50,32 +29,18 @@ export default function DemoPage() {
         </p>
 
         <p className="relative z-[1] mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-sm font-semibold">
-          <span>Tap the phone to call</span>
-          <span lang="ar" dir="rtl">اضغط على الهاتف للاتصال</span>
+          <span>Select Start talking to call</span>
+          <span lang="ar" dir="rtl">اضغط على زر بدء المحادثة للاتصال</span>
         </p>
         <ArrowDown aria-hidden="true" size={22} className="relative z-[1] mx-auto mt-2 block text-[var(--accent-strong)]" />
 
-        {createElement("elevenlabs-convai", {
-          "agent-id": "agent_2201m79rq68hfsx855wpt5p0rwcv",
-          "always-expanded": "true",
-          "text-input": "false",
-          "placement": "bottom",
-          "mobile-fullscreen": "false",
-          "show-resize-button": "false",
-          "show-conversation-id": "false",
-          "text-contents": JSON.stringify(widgetText),
-          className: "!relative !inset-auto -mt-16 block h-[385px] w-full !z-auto",
-          style: {
-            "--el-base": "var(--paper)",
-            "--el-base-primary": "var(--ink)",
-            "--el-base-subtle": "var(--muted)",
-            "--el-base-border": "var(--line)",
-            "--el-base-hover": "var(--surface-raised)",
-            "--el-accent": "var(--accent-strong)",
-            "--el-accent-border": "var(--accent-strong)",
-            "--el-overlay-padding": "20px",
-          },
-        })}
+        <div className="mx-auto mt-4 max-w-xl">
+          <VoiceAssistant niche="sky-global-holidays" inline />
+        </div>
+        <p className="mt-4 text-center text-sm text-[var(--muted)]">
+          Google Gemini processes call audio. Text is saved for demo review. <Link href="/privacy">Privacy details</Link>
+          <span lang="ar" dir="rtl" className="mt-1 block">يعالج Google Gemini صوت المكالمة، ويُحفظ النص لمراجعة التجربة.</span>
+        </p>
 
         <div className="mt-4 grid gap-4 border-t border-[var(--line)] px-2 pt-5 text-sm leading-relaxed sm:grid-cols-2 sm:gap-8">
           <div lang="en">
@@ -91,10 +56,6 @@ export default function DemoPage() {
         </div>
       </div>
 
-      <Script
-        src="https://unpkg.com/@elevenlabs/convai-widget-embed@0.25.2/dist/index.js"
-        strategy="afterInteractive"
-      />
     </section>
   );
 }
